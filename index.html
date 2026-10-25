@@ -1282,6 +1282,7 @@ async function enter(user){
   push();
 }
 async function startApp(){
+  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
   if(!window.supabase||!window.supabase.createClient){ document.getElementById('view').innerHTML='<p class="empty">Impossible de charger l\'app. Recharge la page.</p>'; return; }
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,storageKey:'etabli-auth'}});
   let session=null; try{ session=(await sb.auth.getSession()).data.session; }catch(e){}
@@ -1291,7 +1292,6 @@ async function startApp(){
   addEventListener('offline',()=>setSync());
   document.addEventListener('visibilitychange',()=>{ if(!UID) return; if(document.visibilityState==='visible') pull().then(()=>push()); else push(); });
   setInterval(()=>{ if(UID&&document.visibilityState==='visible') pull(); },60000);
-  if('serviceWorker' in navigator){ try{ navigator.serviceWorker.register('sw.js'); }catch(e){} }
 }
 document.getElementById('loginForm').addEventListener('submit',async e=>{
   e.preventDefault(); e.stopPropagation(); const b=document.getElementById('l-go'); b.disabled=true; b.textContent='Connexion…';
