@@ -1,5 +1,5 @@
 /* Établi : fonctionne hors ligne. Changer VERSION à chaque mise à jour du code. */
-const VERSION = 'etabli-2026-10-25-7';
+const VERSION = 'etabli-2026-10-25-8';
 const SHELL = [
   './', 'index.html', 'lib/supabase.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png',

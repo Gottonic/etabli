@@ -1230,9 +1230,10 @@ document.addEventListener('submit',e=>{e.preventDefault(); const f=e.target.data
     if(e.target.dataset.for==='ntag'){syncDraft(); if(!draft.tags.includes(t.id)) draft.tags.push(t.id); newSheet(true);} else {const p=P(sheetId); if(!p.tags.includes(t.id)) p.tags.push(t.id); save(); detail(sheetId);} }
 });
 /* Mode mini et clavier physique */
-let MINI=(()=>{ try{ const o=localStorage.getItem('etabli-mini'); if(o!==null) return o==='1'; }catch(e){} return innerWidth<=480&&innerHeight<=560; })();
+const TINY=(()=>{ const w=Math.min(screen.width||9999,screen.height||9999), h=Math.max(screen.width||0,screen.height||0); return (w<=480&&h<=640)||/DumberOS/i.test(navigator.userAgent||'')&&w<=480; })();
+let MINI=(()=>{ try{ const o=localStorage.getItem('etabli-mini2'); if(o!==null) return o==='1'; }catch(e){} return TINY; })();
 function applyMode(){document.body.classList.toggle('minimode',MINI); if(MINI) ui.view='mini'; if(!MINI&&ui.view==='mini') ui.view='projets'; if(MINI||/DumberOS/i.test(navigator.userAgent||'')) document.body.classList.add('kbd');}
-function setMini(v){MINI=v; try{localStorage.setItem('etabli-mini',v?'1':'0');}catch(e){} applyMode(); window.scrollTo(0,0); render(); toast(v?'Mode mini':'Mode complet');}
+function setMini(v){MINI=v; try{localStorage.setItem('etabli-mini2',v?'1':'0');}catch(e){} applyMode(); window.scrollTo(0,0); render(); toast(v?'Mode mini':'Mode complet');}
 const kbdOn=()=>document.body.classList.contains('kbd');
 function addBadges(){ if(!kbdOn()) return;
   const put=(el,l,end)=>{ if(!el||[...el.children].some(c=>c.classList.contains('kb'))) return; const s=document.createElement('span'); s.className='kb'; s.textContent=l; end?el.appendChild(s):el.insertBefore(s,el.firstChild); };
