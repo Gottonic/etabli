@@ -248,6 +248,19 @@ body.minimode .toast{font-size:1rem}
 .mdue{flex:none;font-family:var(--mono);font-size:.8rem;font-weight:600;padding:3px 6px;background:var(--pt);color:var(--pc);white-space:nowrap}
 .mdue.u{background:var(--urg);color:#fff}
 body.minimode .mdue{font-size:.88rem}
+.dweek .d7 button.due{box-shadow:inset 0 0 0 3px var(--urg);color:var(--urg);font-weight:700}
+.duebar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;border:2px solid var(--ink);background:var(--cell);padding:8px 12px;font-size:.92rem}
+.wdue{color:var(--urg);font-weight:700}
+.bravo.big{animation:party 2.4s steps(1,end) 3}
+@keyframes party{0%{background:rgba(224,87,79,.6)}20%{background:rgba(245,207,78,.6)}40%{background:rgba(74,134,217,.6)}60%{background:rgba(91,174,91,.6)}80%{background:rgba(154,107,209,.6)}}
+.bravo.big .bravobox{padding:26px 34px;box-shadow:12px 12px 0 var(--ink);animation:pop .45s cubic-bezier(.2,1.6,.4,1),wobble 1.2s ease-in-out .45s infinite}
+.bravo.big .bravobox .emo{font-size:4rem}
+.bravo.big .bravobox b{font-size:clamp(2.2rem,11vw,4.6rem);letter-spacing:.04em;white-space:nowrap}
+.bravo.big .bravobox i{font-style:normal;font-weight:700;font-size:1rem;text-align:center}
+.bravo.big .bravobox small{font-size:1.05rem}
+@keyframes wobble{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(2deg) scale(1.05)}}
+.bravo.calm,.bravo.calm .bravobox{animation:none}
+@media (prefers-reduced-motion:reduce){.bravo.big,.bravo.big .bravobox{animation:none}}
 .danger{border:2px solid var(--neg);background:var(--cell);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 
 /* Cases de la semaine */
@@ -994,16 +1007,18 @@ function placeSheet(id,msg,startK){
   if(isDay(p)){
     const k0=startK||(ctx&&ctx.k)||CUR;
     let html=''; for(let i=0;i<4;i++){const k=wkAdd(k0,i), m=wkMon(k), c=inWeek(k), has=pWeeks(p).includes(k), full=!has&&!canAdd(p,k);
-      html+=`<div class="dweek"><div class="h"><b>S${wkNum(k)}</b><span>${wkRange(k)}</span>${full?'<span class="full">pleine</span>':`<span>${small(p)?c.s.length+'/'+MAXS+' petits':c.n.length+'/'+MAXN}</span>`}</div><div class="d7">${JR.map((j,di)=>{const dt=new Date(m); dt.setDate(m.getDate()+di); const s=iso(dt); const on=p.days.includes(s); return `<button data-act="toggleDay" data-d="${s}" data-k="${k}" class="${on?'on':''}${di>4?' we':''}${offOn(s)?' off':''}">${j}<b>${dt.getDate()}</b></button>`;}).join('')}</div></div>`;}
+      html+=`<div class="dweek"><div class="h"><b>S${wkNum(k)}</b><span>${wkRange(k)}</span>${full?'<span class="full">pleine</span>':`<span>${small(p)?c.s.length+'/'+MAXS+' petits':c.n.length+'/'+MAXN}</span>`}</div><div class="d7">${JR.map((j,di)=>{const dt=new Date(m); dt.setDate(m.getDate()+di); const s=iso(dt); const on=p.days.includes(s); return `<button data-act="toggleDay" data-d="${s}" data-k="${k}" class="${on?'on':''}${di>4?' we':''}${offOn(s)?' off':''}${p.due===s?' due':''}"${p.due===s?' title="Échéance"':''}>${p.due===s?'⏱':j}<b>${dt.getDate()}</b></button>`;}).join('')}</div></div>`;}
     openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer sur des jours<small>${esc(p.name)} · ${SIZES[p.size].l}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    ${p.due?`<div class="duebar">⏱ Échéance : <b>${fmt(p.due)} ${parse(p.due).getFullYear()}</b>${urgHtml(p)}</div>`:''}
     ${msg||''}<p class="note" style="margin:0">Touche les jours où tu y travailles. ${small(p)?'Un petit projet ne prend pas de case de la semaine.':'Il prend une des 3 cases des semaines touchées.'}</p>
     <div class="daypick" style="${pv(p)}">${html}</div>
     <div class="actions"><button class="btn ghost" data-act="dayShift" data-d="-4" data-k="${k0}">‹ Avant</button><button class="btn ghost" data-act="dayShift" data-d="4" data-k="${k0}">Après ›</button></div></div>`,'pd:'+id);
   } else {
     let li='', lm=-1; for(let i=0;i<53;i++){const k=wkAdd(CUR,i), c=inWeek(k), has=p.weeks.includes(k), ok=has||canAdd(p,k);
       const th=wkMon(k); th.setDate(th.getDate()+3); if(th.getMonth()!==lm){lm=th.getMonth(); li+=`<li class="wsep">${MOIS_L[lm]} ${th.getFullYear()}</li>`;}
-      li+=`<li><button data-act="toggleWk" data-k="${k}" class="${has?'in':''}"><span><b>S${wkNum(k)}</b><br><span class="note" style="margin:0">${fmtD(wkMon(k))}</span></span><span class="ems">${[...c.n,...c.s].map(x=>`<i style="${pv(x)}" title="${esc(x.name)}">${x.emoji}</i>`).join('')}</span><span class="cap">${has?'✓ placé':ok?c.n.length+'/'+MAXN:'pleine'}</span></button></li>`;}
+      li+=`<li><button data-act="toggleWk" data-k="${k}" class="${has?'in':''}"><span><b>S${wkNum(k)}</b><br><span class="note" style="margin:0">${fmtD(wkMon(k))}</span></span><span class="ems">${[...c.n,...c.s].map(x=>`<i style="${pv(x)}" title="${esc(x.name)}">${x.emoji}</i>`).join('')}</span><span class="cap">${p.due&&p.due>=wkDates(k)[0]&&p.due<=wkDates(k)[1]?'<b class="wdue">⏱ '+fmt(p.due)+'</b> ':''}${has?'✓ placé':ok?c.n.length+'/'+MAXN:'pleine'}</span></button></li>`;}
     openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer dans des semaines<small>${esc(p.name)} · ${SIZES[p.size].l}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    ${p.due?`<div class="duebar">⏱ Échéance : <b>${fmt(p.due)} ${parse(p.due).getFullYear()}</b>${urgHtml(p)}</div>`:''}
     ${msg||''}<p class="note" style="margin:0">Touche une semaine pour l'ajouter ou la retirer.</p><ul class="wkpick">${li}</ul></div>`,'pw:'+id);
   }
 }
@@ -1040,24 +1055,26 @@ function summary(){
   <pre class="sum" id="sumtxt">${esc(L.join('\n'))}</pre><button class="btn" data-act="copySum">Copier le texte</button></div>`,'recap');
 }
 function bravo(p){
-  const wrap=document.createElement('div'); wrap.className='bravo';
-  wrap.innerHTML=`<canvas></canvas><div class="bravobox" style="${pv(p)}"><span class="emo">${p.emoji}</span><b>BRAVO</b><small>${esc(p.name)}</small></div>`;
+  const big=p.size==='m1';
+  const wrap=document.createElement('div'); wrap.className='bravo'+(big?' big':'');
+  wrap.innerHTML=`<canvas></canvas><div class="bravobox" style="${pv(p)}"><span class="emo">${p.emoji}</span><b>${big?'BRAVO !!!':'BRAVO'}</b>${big?'<i>Plus d\'un mois de travail, c\'est fait.</i>':''}<small>${esc(p.name)}</small></div>`;
   document.body.appendChild(wrap);
   const end=()=>{ if(wrap.parentNode) wrap.parentNode.removeChild(wrap); };
   wrap.addEventListener('click',end);
   let reduce=false; try{reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;}catch(e){}
   const cv=wrap.querySelector('canvas'); let ctx2=null; try{ctx2=cv.getContext('2d');}catch(e){}
-  if(reduce||!ctx2){ setTimeout(end,1600); return; }
+  if(reduce||!ctx2){ wrap.classList.add('calm'); setTimeout(end,big?3000:1600); return; }
   const W=cv.width=innerWidth, H=cv.height=innerHeight, cols=[p.color,'#F5CF4E','#E0574F','#4A86D9','#5BAE5B','#F07F9E','#FFFFFF'];
   const parts=[]; let t=0;
   const burst=(x,y)=>{ for(let i=0;i<46;i++){ const a=Math.PI*2*i/46+Math.random()*.2, v=2+Math.random()*4.5; parts.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,c:cols[(Math.random()*cols.length)|0],l:60+Math.random()*30,s:3+((Math.random()*3)|0)}); } };
-  const shots=[[.25,.3,0],[.75,.25,14],[.5,.18,26],[.2,.55,40],[.8,.5,50],[.5,.42,62]];
+  let shots=[[.25,.3,0],[.75,.25,14],[.5,.18,26],[.2,.55,40],[.8,.5,50],[.5,.42,62]];
+  if(big){ shots=[]; for(let i=0;i<26;i++) shots.push([.1+Math.random()*.8,.1+Math.random()*.55,i*13]); }
   (function frame(){ if(!wrap.parentNode) return; t++;
     shots.forEach(([fx,fy,at])=>{ if(t===at+1) burst(W*fx,H*fy); });
     ctx2.clearRect(0,0,W,H);
     for(let i=parts.length-1;i>=0;i--){ const q=parts[i]; q.x+=q.vx; q.y+=q.vy; q.vy+=.06; q.vx*=.985; q.l--; if(q.l<=0){parts.splice(i,1); continue;} ctx2.globalAlpha=Math.min(1,q.l/30); ctx2.fillStyle=q.c; ctx2.fillRect(q.x,q.y,q.s,q.s); }
     ctx2.globalAlpha=1;
-    if(t<150) requestAnimationFrame(frame); else end();
+    if(t<(big?420:150)) requestAnimationFrame(frame); else end();
   })();
 }
 /* Notes façon Workflowy : liste à plat avec niveaux */
@@ -1161,7 +1178,7 @@ document.addEventListener('click',e=>{
   else if(a==='offs') offsSheet();
   else if(a==='minis') minisSheet();
   else if(a==='minisDone') minisSheet(true);
-  else if(a==='miniDone'){ const p=P(sheetId); p.closed=todayS; save(); minisSheet(); bravo(p); }
+  else if(a==='miniDone'){ const p=P(sheetId); p.closed=todayS; save(); minisSheet(); toast('✓ '+p.name); }
   else if(a==='itemMini'){ const v=takeItem(); if(v){ S.projects.push(newMini(v.t)); save(); toast('Mini projet ajouté'); } closeSheet(); }
   else if(a==='notes') notesSheet(sheetId);
   else if(a==='nCol') nAct('nCol',el.dataset.n);
@@ -1223,7 +1240,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.act==='task'){const p=P(sheetId); p.tasks[Number(t.dataset.i)].d=t.checked; save(); detail(sheetId); return;}
-  if(t.dataset.act==='miniChk'){ const p=P(t.dataset.id); if(p){ p.closed=todayS; save(); setTimeout(()=>{ minisSheet(); bravo(p); },250); } return; }
+  if(t.dataset.act==='miniChk'){ const p=P(t.dataset.id); if(p){ p.closed=todayS; save(); setTimeout(()=>{ minisSheet(); toast('✓ '+p.name); },250); } return; }
   if(t.dataset.act==='petiteDone'){const v=S.lists.petites.find(x=>x.id===t.dataset.v); if(v){v.d=t.checked; save(); render();} return;}
   if(t.id==='f-item'&&ctx&&ctx.vid){const v=itemArr(ctx.src).find(x=>x.id===ctx.vid); if(v&&t.value.trim()){v.t=t.value.trim(); save();} }
   if(t.dataset.field&&sheetId){const p=P(sheetId), f=t.dataset.field; let v=t.value.trim(); if(f==='name'&&!v) return; if(f==='due') v=v||null; p[f]=v; save(); toast('Enregistré'); if(f==='due') detail(sheetId);}
