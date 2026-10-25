@@ -104,7 +104,16 @@ body.kbd .xbtn .kb{background:currentColor;color:var(--pc,var(--band));margin-le
 body.kbd :focus{outline:3px solid var(--ink);outline-offset:-3px;box-shadow:inset 0 0 0 6px var(--hl)}
 body.kbd .input:focus,body.kbd input:focus{box-shadow:inset 0 0 0 3px var(--hl)}
 /* Mode mini (DumberOS, très petit écran) */
-body.mini .top,body.mini .wrap>.note,body.mini .tabs{display:none}
+body.mini .wrap>.note,body.mini .tabs,body.mini .top .btns{display:none}
+body.mini .top .in{padding-block:6px}
+.mbig{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:6px}
+.mbig button{border:2px solid var(--ink);background:var(--cell);padding:9px 4px;font-weight:700;font-size:.95rem;display:flex;align-items:center;justify-content:center;gap:6px}
+.mbig button.dark{background:var(--ink);color:var(--paper)}
+body.kbd .mbig button.dark .kb{background:var(--paper);color:var(--ink)}
+.mlbl{margin-top:10px;font-size:.68rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:700;display:flex;justify-content:space-between}
+body.mini .mrows{margin-top:4px;gap:4px}
+body.mini .mrow{height:44px}
+.mnote{margin:6px 0 0;font-size:.78rem;color:var(--muted)}
 body.mini::before{background:var(--paper)}
 body.mini .wrap{padding-block:8px 8px}
 .mhead{display:flex;align-items:stretch;border:1px solid var(--ink);background:var(--other);height:38px}
@@ -608,9 +617,18 @@ function render(){
   const c=inWeek(CUR);
   document.getElementById('sub').textContent='S'+wkNum(CUR);
   document.querySelectorAll('.tab').forEach(t=>{ if(t.dataset.view===ui.view) t.setAttribute('aria-current','page'); else t.removeAttribute('aria-current'); });
-  ({semaine:MINI?vMini:vSemaine,planning:vPlanning,projets:vProjets,vrac:vVrac})[ui.view]();
+  ({semaine:vSemaine,mini:vMiniHome,planning:vPlanning,projets:vProjets,vrac:vVrac})[ui.view]();
   const vb=document.getElementById('vbadge'); if(vb){vb.textContent=S.inbox.length; vb.hidden=!S.inbox.length;}
-  if(MINI&&ui.view!=='semaine') $view.insertAdjacentHTML('afterbegin',`<div class="mback"><button data-act="goView" data-v="semaine"><span class="kb">7</span>‹ Semaine</button></div>`);
+  if(MINI&&ui.view!=='mini') $view.insertAdjacentHTML('afterbegin',`<div class="mback"><button data-act="goView" data-v="mini"><span class="kb">0</span>‹ Accueil</button></div>`);
+}
+function vMiniHome(){
+  const c=inWeek(CUR), ord=[...weekOrder(CUR,c.n),...c.s];
+  $view.innerHTML=`<form class="minline" data-act="addVrac"><span class="kb">5</span><input class="input" id="f-vrac" placeholder="Noter en vrac…" aria-label="Noter en vrac" autocomplete="off"><button class="btn" type="submit">+</button></form>
+  <div class="mbig"><button data-act="new"><span class="kb">#</span>+ Projet</button><button class="dark" data-act="summary"><span class="kb">*</span>RECAP</button></div>
+  <div class="mlbl"><span>Cette semaine</span><span>${c.n.length}/${MAXN}${c.s.length?' +'+c.s.length:''}</span></div>
+  <div class="mrows">${ord.map(p=>`<button class="mrow" style="${pv(p)}" data-act="open" data-id="${p.id}"><span class="emo">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b>${p.next?`<small>${esc(p.next)}</small>`:''}</span>${urgent(p)?'<span class="urg">!</span>':''}</button>`).join('')||'<p class="empty" style="padding:6px 0">Rien de prévu cette semaine.</p>'}</div>
+  ${S.inbox.length?`<p class="mnote">${S.inbox.length} élément${S.inbox.length>1?'s':''} en vrac à trier sur l'ordi ou le téléphone.</p>`:''}
+  <button class="mmode" data-act="miniToggle">Mode complet</button>`;
 }
 function vMini(){
   const k=ui.wk, c=inWeek(k), ord=weekOrder(k,c.n);
@@ -1154,8 +1172,8 @@ document.addEventListener('submit',e=>{e.preventDefault(); const f=e.target.data
     if(e.target.dataset.for==='ntag'){syncDraft(); if(!draft.tags.includes(t.id)) draft.tags.push(t.id); newSheet(true);} else {const p=P(sheetId); if(!p.tags.includes(t.id)) p.tags.push(t.id); save(); detail(sheetId);} }
 });
 /* Mode mini et clavier physique */
-let MINI=false; /* mode mini en pause */
-function applyMode(){document.body.classList.toggle('mini',MINI); if(MINI||/DumberOS/i.test(navigator.userAgent||'')) document.body.classList.add('kbd');}
+let MINI=(()=>{ try{ const o=localStorage.getItem('etabli-mini'); if(o!==null) return o==='1'; }catch(e){} return innerWidth<=480&&innerHeight<=560; })();
+function applyMode(){document.body.classList.toggle('mini',MINI); if(MINI) ui.view='mini'; if(!MINI&&ui.view==='mini') ui.view='projets'; if(MINI||/DumberOS/i.test(navigator.userAgent||'')) document.body.classList.add('kbd');}
 function setMini(v){MINI=v; try{localStorage.setItem('etabli-mini',v?'1':'0');}catch(e){} applyMode(); window.scrollTo(0,0); render(); toast(v?'Mode mini':'Mode complet');}
 const kbdOn=()=>document.body.classList.contains('kbd');
 function addBadges(){ if(!kbdOn()) return;
@@ -1193,13 +1211,13 @@ document.addEventListener('keydown',e=>{
   if(k.startsWith('Arrow')){ e.preventDefault(); move(k==='ArrowDown'||k==='ArrowRight'?1:-1); return; }
   if(k==='Enter'){ if(t.type==='checkbox'){ e.preventDefault(); t.click(); } return; }
   const sheetOpen=!$scrim.hidden;
-  if(k==='0'||k==='Escape'){ e.preventDefault(); if(sheetOpen){ const b=$sheet.querySelector('.xbtn'); b?b.click():closeSheet(); } return; }
+  if(k==='0'||k==='Escape'){ e.preventDefault(); if(sheetOpen){ const b=$sheet.querySelector('.xbtn'); b?b.click():closeSheet(); } else if(MINI&&ui.view!=='mini'){ ui.view='mini'; render(); } return; }
   if(k==='*'){ e.preventDefault(); summary(); return; }
   if(k==='#'){ e.preventDefault(); ctx=null; newSheet(false); return; }
   if(sheetOpen) return;
   if(k==='4'||k==='6'){ if(ui.view==='planning'){ e.preventDefault(); const b=document.querySelector(k==='4'?'.gnav button:first-child':'.gnav button:last-child'); if(b) b.click(); } return; }
-  if(k==='5'){ e.preventDefault(); if(ui.view!=='vrac'){ ui.view='vrac'; render(); } const i=document.getElementById('f-vrac'); if(i) fset(i); return; }
-  if(k==='7'||k==='8'||k==='9'){ e.preventDefault(); ui.view=VIEWS[Number(k)-7]; window.scrollTo(0,0); render(); return; }
+  if(k==='5'){ e.preventDefault(); const tv=MINI?'mini':'vrac'; if(ui.view!==tv){ ui.view=tv; render(); } const i=document.getElementById('f-vrac'); if(i) fset(i); return; }
+  if(k==='7'||k==='8'||k==='9'){ e.preventDefault(); ui.view=(MINI&&k==='7')?'mini':VIEWS[Number(k)-7]; window.scrollTo(0,0); render(); return; }
 },true);
 
 /* ================= Synchro Supabase ================= */
@@ -1314,6 +1332,7 @@ function accountSheet(confirmOut){
    <div class="bilan"><b>${esc(st)}</b><p>Dernier contact avec le serveur : ${t}</p></div>
    <button class="btn" data-act="syncNow">Synchroniser maintenant</button>
    <button class="btn ghost" data-act="exportData">Exporter mes données (fichier)</button>
+   <button class="btn ghost" data-act="miniToggle">${MINI?'✓ Mode mini sur cet appareil : activé':'Mode mini sur cet appareil : désactivé'}</button>
    ${fsSupported()?`<div class="field"><span class="lbl">Sur cet appareil</span><button class="btn ghost" data-act="fsToggle">${fsAuto()?'✓ Plein écran automatique : activé':'Plein écran automatique : désactivé'}</button><p class="note" style="margin:0">Cache la barre du navigateur dès que tu touches l'écran. Utile si le navigateur n'ouvre pas l'app en plein écran tout seul.</p></div>`:''}
    ${confirmOut?`<div class="danger"><div>${dirty.size?'<b>'+dirty.size+' changement'+(dirty.size>1?'s':'')+' pas encore envoyé'+(dirty.size>1?'s':'')+'</b> seraient perdus. ':''}Se déconnecter de cet appareil ?</div><div class="actions"><button class="btn ghost" data-act="account">Annuler</button><button class="btn warn" data-act="logoutOk">Se déconnecter</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="logout">Se déconnecter de cet appareil</button>`}
   </div>`,'acct');
@@ -1322,6 +1341,7 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest&&e.target.closest('[data-act]'); if(!el) return; const a=el.dataset.act;
   if(a==='account') accountSheet();
   else if(a==='logout') accountSheet(true);
+  else if(a==='miniToggle'&&!$scrim.hidden) accountSheet();
   else if(a==='fsToggle'){ const on=!fsAuto(); try{ localStorage.setItem('etabli-fs',on?'1':'0'); }catch(err){} if(on) goFull(); else if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(err){} } accountSheet(); }
   else if(a==='syncNow'){ el.disabled=true; el.textContent='Synchro…'; await push(); await pull(true); await push(); accountSheet(); toast(syncErr?'Problème de synchro':'Synchronisé'); }
   else if(a==='exportData'){ const blob=new Blob([JSON.stringify({app:'etabli',version:1,exported:new Date().toISOString(),data:S},null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const l=document.createElement('a'); l.href=u; l.download='etabli-'+todayS+'.json'; document.body.appendChild(l); l.click(); setTimeout(()=>{URL.revokeObjectURL(u); l.remove();},1000); }
