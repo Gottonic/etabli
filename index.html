@@ -216,6 +216,21 @@ tbody tr.qrow{cursor:default}
 .lerr{color:var(--neg)!important;font-weight:700}
 .tablebox,.gantt{scrollbar-width:none}
 .tablebox::-webkit-scrollbar,.gantt::-webkit-scrollbar{display:none}
+.sizes button[data-s="mini"]{grid-column:1/-1;flex-direction:row;align-items:baseline;gap:10px}
+.mgrp td{font-weight:700}
+.mlist{list-style:none;margin:0;padding:0;border:1px solid var(--ink);background:var(--cell)}
+.mlist li{display:flex;align-items:center;gap:10px;padding-left:12px;border-top:1px solid var(--line)}
+.mlist li:first-child{border-top:0}
+.mlist .mt{flex:1;min-width:0;border:0;background:none;text-align:left;padding:9px 12px 9px 0;display:flex;flex-direction:column;gap:3px}
+.mlist .mt b{font-size:.98rem}
+.mlist li.empty{padding:12px}
+.mminis{width:100%;margin-top:6px;border:2px solid var(--ink);background:var(--cell);padding:10px;font-weight:700;font-size:1rem;display:flex;justify-content:space-between;align-items:center}
+body.minimode .minline .input{padding:13px 10px;font-size:1.05rem}
+body.minimode .minline .btn{padding:13px 16px;font-size:1.1rem}
+body.minimode .mbig button{padding:16px 6px;font-size:1.08rem}
+body.minimode .mrow{height:52px}
+body.minimode .mrow .tx b{font-size:1.02rem}
+body.minimode .kb{min-width:22px;height:22px;font-size:.8rem}
 .danger{border:2px solid var(--neg);background:var(--cell);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 
 /* Cases de la semaine */
@@ -490,7 +505,7 @@ pre.sum{white-space:pre-wrap;font-family:var(--mono);font-size:.8rem;background:
 (function(){
 const MAXN=3, MAXS=2, URG=21, KEY='etabli-maquette-v4';
 const COLORS=['#F0A35E','#F5CF4E','#E0574F','#F07F9E','#9A6BD1','#4A86D9','#3FB6C8','#5BAE5B','#A9A63A','#A2703F','#5E6B7A','#2B2B2B','#3F51B5','#7FD1AE'];
-const SIZES={h4:{l:'+4 h',sub:'petit · sur un jour',unit:'day',min:4},j2:{l:'+2 jours',sub:'1 case · sur des jours',unit:'day',min:16},w1:{l:'+1 semaine',sub:'1 case par semaine',unit:'week',min:40},m1:{l:'+1 mois',sub:'à découper en étapes',unit:'week',min:160}};
+const SIZES={mini:{l:'Mini',sub:'moins de 4 h · liste à part',unit:'none',min:0},h4:{l:'+4 h',sub:'petit · sur un jour',unit:'day',min:4},j2:{l:'+2 jours',sub:'1 case · sur des jours',unit:'day',min:16},w1:{l:'+1 semaine',sub:'1 case par semaine',unit:'week',min:40},m1:{l:'+1 mois',sub:'à découper en étapes',unit:'week',min:160}};
 const STATE={cours:'En cours',proch:'Prochaine semaine',plan:'Planifié',attente:'À planifier',fini:'Terminé'};
 const IMP={1:'secondaire',2:'normal',3:'important'};
 const MOIS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
@@ -594,6 +609,9 @@ const P=id=>S.projects.find(p=>p.id===id);
 const T=id=>S.tags.find(t=>t.id===id);
 const isDay=p=>SIZES[p.size].unit==='day';
 const small=p=>p.size==='h4';
+const isMini=p=>p&&p.size==='mini';
+const MINI_COLOR='#E2DFD3';
+function newMini(name,id,done){ const p={id:id||'p'+Date.now(),emoji:'',color:MINI_COLOR,name,size:'mini',imp:2,due:null,tags:[],weeks:[],days:[],why:'',next:'',folder:null,tasks:[]}; if(done) p.closed=todayS; return p; }
 const pWeeks=p=>isDay(p)?[...new Set(p.days.map(d=>wkKey(parse(d))))].sort():p.weeks.slice().sort();
 const open=()=>S.projects.filter(p=>!p.closed);
 function state(p){ if(p.closed) return 'fini'; const w=pWeeks(p); if(w.includes(CUR)) return 'cours'; if(w.includes(wkAdd(CUR,1))) return 'proch'; if(w.some(x=>x>CUR)) return 'plan'; return 'attente'; }
@@ -623,10 +641,35 @@ function render(){
   const vb=document.getElementById('vbadge'); if(vb){vb.textContent=S.inbox.length; vb.hidden=!S.inbox.length;}
   if(MINI&&ui.view!=='mini') $view.insertAdjacentHTML('afterbegin',`<div class="mback"><button data-act="goView" data-v="mini"><span class="kb">0</span>‹ Accueil</button></div>`);
 }
+function minisSheet(showDone){
+  sheetId=null; ctx=null;
+  const all=S.projects.filter(isMini), list=all.filter(p=>showDone?!!p.closed:!p.closed).sort(showDone?(a,b)=>String(b.closed).localeCompare(String(a.closed)):prioSort);
+  openSheet(`<div class="shead"><h2>Mini projets<small>moins de 4 h · ${list.length} ${showDone?'terminé'+(list.length>1?'s':''):'en cours'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+  ${showDone?'':`<form class="inline vadd" style="margin:0" data-act="addMini"><input class="input" id="f-mini" placeholder="Nouveau mini projet…" autocomplete="off" aria-label="Nouveau mini projet"><button class="btn" type="submit">+</button></form>`}
+  <ul class="mlist">${list.map(p=>{const n=p.tasks.length, d=p.tasks.filter(x=>x.d).length; return `<li>${showDone?'':`<input type="checkbox" class="vchk" data-act="miniChk" data-id="${p.id}" aria-label="Terminé : ${esc(p.name)}">`}<button class="mt" data-act="open" data-id="${p.id}"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}${n?`<span>${d}/${n} étape${n>1?'s':''}</span>`:''}${p.due?`<span>⏱ ${fmt(p.due)}</span>`:''}${p.notes&&p.notes.some(x=>x.t)?'<span>notes</span>':''}${showDone?`<span>fait le ${fmt(p.closed)}</span>`:urgHtml(p)}</span></button></li>`;}).join('')||`<li class="empty">${showDone?'Aucun mini projet terminé.':'Aucun mini projet en cours.'}</li>`}</ul>
+  <button class="linkbtn" style="align-self:center" data-act="${showDone?'minis':'minisDone'}">${showDone?'‹ Mini projets en cours':'Voir les mini projets terminés'}</button></div>`,'minis'+(showDone?'d':''));
+}
+function detailMini(p,msg){
+  const closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, hasNotes=p.notes&&p.notes.some(x=>x.t);
+  openSheet(`<div class="shead" style="--pc:${MINI_COLOR};--pt:#1E1E1E"><h2>${esc(p.name)}<small>Mini projet${closed?' · terminé le '+fmt(p.closed):''}</small></h2><button class="xbtn" data-act="minis">‹ Liste</button></div><div class="sbody">
+  ${closed?'':`<div class="field"><label for="f-mname">Nom</label><input class="input" id="f-mname" data-field="name" value="${esc(p.name)}"></div>`}
+  <div class="field"><span class="lbl">Étapes ${n?d+'/'+n:''}</span>
+    ${n?`<ul class="list">${p.tasks.map((x,i)=>`<li class="${x.d?'done':''}"><input type="checkbox" id="tk-${i}" data-act="task" data-i="${i}" ${x.d?'checked':''} ${closed?'disabled':''}><label class="t" for="tk-${i}">${esc(x.t)}</label></li>`).join('')}</ul>`:''}
+    ${closed?'':`<form class="inline" data-act="addTask"><input class="input" id="f-task" placeholder="Nouvelle étape" aria-label="Nouvelle étape"><button class="btn" type="submit">+</button></form>`}</div>
+  ${closed?'':`<div class="field"><span class="lbl">Importance</span>${starPick(p.imp,'imp')}</div>
+  <div class="field"><label for="f-due">Échéance</label><div class="duerow"><input class="input" type="date" id="f-due" data-field="due" value="${p.due||''}"><button data-act="clearDue">Aucune</button></div><p class="duehint">${dueHint(p.due)}</p></div>`}
+  <div class="field"><span class="lbl">Notes</span>${hasNotes?`<button class="notesprev" data-act="notes">${p.notes.filter(x=>x.t).slice(0,3).map(x=>`<span style="padding-left:${x.l*14}px">• ${esc(x.t)}</span>`).join('')}<b>Ouvrir les notes</b></button>`:`<button class="btn ghost" data-act="notes">+ Notes</button>`}</div>
+  ${closed?`<button class="btn ghost" data-act="reopen">Remettre en cours</button>`:`<button class="btn" data-act="miniDone">✓ Terminé</button>`}
+  ${closed?'':`<details class="more"><summary>En faire un projet plus grand</summary><div class="field"><span class="lbl">Durée</span>${sizePick(p.size,'size')}</div><p class="note" style="margin:0">Choisir une autre durée le transforme en projet complet, avec émoji, couleur et planning.</p></details>`}
+  ${msg==='del'?`<div class="danger"><div>Supprimer <b>${esc(p.name)}</b> définitivement ?</div><div class="actions"><button class="btn ghost" data-act="back">Annuler</button><button class="btn warn" data-act="delOk">Supprimer</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="delAsk">Supprimer</button>`}
+  </div>`,'d:'+p.id);
+}
+function migratePetites(){ const L=(S.lists&&S.lists.petites)||[]; if(!L.length) return false; L.forEach(v=>{ const id='pm'+v.id; if(!P(id)) S.projects.push(newMini(v.t,id,v.d)); }); S.lists.petites=[]; save(); return true; }
 function vMiniHome(){
   const c=inWeek(CUR), ord=[...weekOrder(CUR,c.n),...c.s];
   $view.innerHTML=`<form class="minline" data-act="addVrac"><span class="kb">5</span><input class="input" id="f-vrac" placeholder="Noter en vrac…" aria-label="Noter en vrac" autocomplete="off"><button class="btn" type="submit">+</button></form>
   <div class="mbig"><button data-act="new"><span class="kb">#</span>+ Projet</button><button class="dark" data-act="summary"><span class="kb">*</span>RECAP</button></div>
+  <button class="mminis" data-act="minis">📝 Mini projets <b>${S.projects.filter(p=>isMini(p)&&!p.closed).length}</b></button>
   <div class="mlbl"><span>Cette semaine</span><span>${c.n.length}/${MAXN}${c.s.length?' +'+c.s.length:''}</span></div>
   <div class="mrows">${ord.map(p=>`<button class="mrow" style="${pv(p)}" data-act="open" data-id="${p.id}"><span class="emo">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b>${p.next?`<small>${esc(p.next)}</small>`:''}</span>${urgent(p)?'<span class="urg">!</span>':''}</button>`).join('')||'<p class="empty" style="padding:6px 0">Rien de prévu cette semaine.</p>'}</div>
   ${S.inbox.length?`<p class="mnote">${S.inbox.length} élément${S.inbox.length>1?'s':''} en vrac à trier sur l'ordi ou le téléphone.</p>`:''}
@@ -738,16 +781,20 @@ function vPlanning(){
 /* Vue projets */
 function vProjets(){
   const order={cours:0,proch:1,plan:2,attente:3,fini:4};
-  let rows=S.projects.filter(p=>ui.filter==='fini'?!!p.closed:ui.filter==='attente'?(!p.closed&&state(p)==='attente'):!p.closed);
+  let rows=S.projects.filter(p=>ui.filter==='fini'?!!p.closed:ui.filter==='attente'?(!isMini(p)&&!p.closed&&state(p)==='attente'):(!isMini(p)&&!p.closed));
+  const mOpen=S.projects.filter(p=>isMini(p)&&!p.closed), mBest=mOpen.slice().sort(prioSort)[0];
   if(ui.tag) rows=rows.filter(p=>p.tags.includes(ui.tag));
   const prio=ui.sort==='prio';
   rows.sort(prio?prioSort:(x,y)=>order[state(x)]-order[state(y)]||prioSort(x,y));
+  if(ui.filter==='ouverts'&&!ui.tag&&mBest){ const g={__g:true,id:'__minis',imp:mBest.imp,due:mBest.due,size:'mini',tags:[],weeks:[],days:[]}; if(prio){ rows.push(g); rows.sort(prioSort); } else rows.unshift(g); }
   const F=[['ouverts','En cours et à venir'],['attente','Non planifiés'],['fini','Terminés']];
   let lastQ=-1;
   $view.innerHTML=`<div class="ctrl"><div class="seg"><button data-act="sort" data-s="prio" aria-pressed="${prio}">Par priorité</button><button data-act="sort" data-s="etat" aria-pressed="${!prio}">Par état</button></div>
   <div class="chips">${F.map(([k,l])=>`<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${ui.filter===k}">${l}</button>`).join('')}</div></div>
   <div class="tablebox"><table class="ptable"><thead><tr><th class="pth">Projet</th><th>État</th><th>Importance</th><th>Échéance</th><th>Taille</th><th>Tags</th></tr></thead>
-  <tbody>${rows.map(p=>{const st=state(p); let pre=''; if(prio&&quad(p)!==lastQ){lastQ=quad(p); pre=`<tr class="qrow"><td colspan="6"><span class="quad"><i style="background:${QUADS[lastQ][1]}"></i>${QUADS[lastQ][0]}</span></td></tr>`;}
+  <tbody>${rows.map(p=>{let pre=''; if(prio&&quad(p)!==lastQ){lastQ=quad(p); pre=`<tr class="qrow"><td colspan="6"><span class="quad"><i style="background:${QUADS[lastQ][1]}"></i>${QUADS[lastQ][0]}</span></td></tr>`;}
+   if(p.__g){ const nu=mOpen.filter(urgent).length, fd=mOpen.map(x=>x.due).filter(Boolean).sort()[0]; return pre+`<tr data-act="minis" class="mgrp" style="--pc:${MINI_COLOR};--pt:#1E1E1E"><td class="pcell"><div class="in"><span class="sw" style="font-family:var(--mono);font-size:.8rem;font-weight:600">(${mOpen.length})</span><span class="nm"><span>Mini projets</span></span></div></td><td class="st">Liste</td><td>${starsHtml(mBest.imp)}</td><td>${fd?fmt(fd)+' '+parse(fd).getFullYear():''} ${nu?`<span class="urg">${nu} URGENT</span>`:''}</td><td style="font-family:var(--mono)">Mini</td><td></td></tr>`; }
+   const st=state(p);
    return pre+`<tr data-act="open" data-id="${p.id}" style="${pv(p)}"><td class="pcell"><div class="in"><span class="sw">${p.emoji}</span><span class="nm"><span>${esc(p.name)}</span></span></div></td><td class="st st-${st}">${STATE[st]}</td><td>${starsHtml(p.imp)}</td><td>${p.due?fmt(p.due)+' '+parse(p.due).getFullYear():''} ${urgHtml(p)}</td><td style="font-family:var(--mono)">${SIZES[p.size].l}</td><td>${tagsHtml(p)}</td></tr>`}).join('')||'<tr class="qrow"><td class="empty" colspan="6"><span class="quad">Aucun projet ici.</span></td></tr>'}</tbody></table></div>
   ${S.tags.length?`<div class="tagfilter"><span class="lbl">Filtrer par tag</span><div class="pchips">${S.tags.map(t=>`<button class="tchip" data-act="tagf" data-t="${t.id}" aria-pressed="${ui.tag===t.id}">${esc(t.name)}</button>`).join('')}</div></div>`:''}
   <button class="btn ghost" style="margin-top:10px" data-act="tags">Gérer les tags</button>
@@ -763,7 +810,7 @@ function vVrac(){
   <div class="sechead">À trier<span>${S.inbox.length}</span></div>
   <ul class="vlist vrac">${S.inbox.map(v=>`<li><button class="vt" data-act="item" data-src="inbox" data-v="${v.id}">${esc(v.t)}</button><span class="vgo">›</span></li>`).join('')||'<li class="empty">Tout est trié.</li>'}</ul>
   ${S.inbox.length?'<p class="note">Touche une ligne pour la ranger.</p>':''}
-  ${box('petites')}${box('autre')}`;
+  ${(()=>{const mo=S.projects.filter(p=>isMini(p)&&!p.closed).sort(prioSort); return `<div class="sechead">📝 Mini projets<span>${mo.length}</span></div><ul class="vlist vrac">${mo.slice(0,4).map(p=>`<li><button class="vt" data-act="open" data-id="${p.id}">${esc(p.name)} ${urgHtml(p)}</button><span class="vgo">›</span></li>`).join('')}<li><button class="vt" data-act="minis"><b>${mo.length>4?'Voir les '+mo.length+' mini projets':'Ouvrir la liste des mini projets'}</b></button><span class="vgo">›</span></li></ul>`;})()}${box('autre')}`;
 }
 function itemSheet(src,vid,mode){
   sheetId=null; ctx={src,vid};
@@ -782,7 +829,7 @@ function itemSheet(src,vid,mode){
     <div class="opts">
      ${opt('itemStep','🧩','Étape d\'un projet','Ajoutée aux tâches du projet choisi')}
      ${opt('itemProj','✨','Transformer en projet','Création rapide, le nom est déjà rempli')}
-     ${src!=='petites'?opt('itemTo',LISTS.petites.emoji,LISTS.petites.name,LISTS.petites.hint,'data-to="petites"'):''}
+     ${opt('itemMini','📝','Mini projet','Moins de 4 h : ajouté à la liste des mini projets')}
      ${src!=='autre'?opt('itemTo',LISTS.autre.emoji,LISTS.autre.name,LISTS.autre.hint,'data-to="autre"'):''}
      ${src!=='inbox'?opt('itemTo','📥','Remettre en vrac','À trier plus tard','data-to="inbox"'):''}
     </div>
@@ -864,15 +911,15 @@ function newSheet(keep){
   if(ctx&&ctx.size==='s'&&!keep) draft.size='h4';
   const d=draft;
   openSheet(`<div class="shead"><h2>Nouveau projet<small>${ctx?'pour la semaine '+wkNum(ctx.k):'il ira dans « À planifier »'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
-   <div class="namerow" style="--pc:${d.color}"><button class="emobtn" data-act="emojiPick" data-for="new" aria-label="Choisir un émoji" id="nemo">${d.emoji}</button><input class="input" id="n-name" placeholder="Ex. Monter le tunnel de semis" value="${esc(d.name)}" aria-label="Nom du projet"></div>
+   <div class="namerow" style="--pc:${d.color}">${d.size==='mini'?'':`<button class="emobtn" data-act="emojiPick" data-for="new" aria-label="Choisir un émoji" id="nemo">${d.emoji}</button>`}<input class="input" id="n-name" placeholder="Ex. Monter le tunnel de semis" value="${esc(d.name)}" aria-label="Nom du projet"></div>
    <div class="field"><span class="lbl">Durée</span>${sizePick(d.size,'nsize')}</div>
    <div class="field"><span class="lbl">Importance</span>${starPick(d.imp,'nimp')}</div>
    <div class="field"><label for="n-due">Échéance (facultatif)</label><div class="duerow"><input class="input" type="date" id="n-due" value="${d.due}"><button data-act="nodue">Aucune</button></div><p class="duehint" id="n-duehint">${dueHint(d.due)}</p></div>
-   <div class="field"><span class="lbl">Tags</span>${tagPick(d.tags,'ntag')}</div>
+   ${d.size==='mini'?'':`<div class="field"><span class="lbl">Tags</span>${tagPick(d.tags,'ntag')}</div>
    <details class="more"><summary>Plus de détails</summary>
     <div class="field"><label for="n-why">Pourquoi ce projet</label><input class="input" id="n-why" value="${esc(d.why)}" placeholder="Ce que tu veux en retirer"></div>
     <div class="field"><span class="lbl">Couleur</span><div class="swatches">${COLORS.map(c=>`<button style="--sw:${c}" data-act="ncolor" data-c="${c}" aria-pressed="${d.color===c}" aria-label="Couleur ${c}"></button>`).join('')}</div></div>
-   </details>
+   </details>`}
    <button class="btn" data-act="create">Créer${ctx?' et placer':''}</button></div>`,'new');
   if(!keep) setTimeout(()=>{const n=document.getElementById('n-name'); if(n) try{n.focus();}catch(e){}},60);
 }
@@ -893,6 +940,7 @@ function emojiDone(e){ if(emojiFor==='new'){ if(e){draft.emoji=e; draft.picked=t
 /* Fiche projet */
 function detail(id,msg){
   const p=P(id); if(!p) return; sheetId=id; ctx=null; draft=null;
+  if(isMini(p)){ detailMini(p,msg); return; }
   const st=state(p), closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, mo=money(id), h=hoursOf(id), sz=SIZES[p.size];
   const placed=isDay(p)?p.days.slice().sort().map(x=>({k:x,l:dayLbl(x)+' '+MOIS[parse(x).getMonth()],w:wkKey(parse(x))})):pWeeks(p).map(w=>({k:w,l:'S'+wkNum(w)+' · '+wkRange(w),w}));
   openSheet(`<div class="shead" style="${pv(p)}"><button class="emo" data-act="emojiPick" data-for="${p.id}" aria-label="Changer l'émoji">${p.emoji}</button><h2>${esc(p.name)}<small>${sz.l} · ${IMP[p.imp]}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
@@ -944,7 +992,7 @@ function placeSheet(id,msg,startK){
 }
 function fillWeek(k,size,msg){
   ctx={k,size,fromFill:true}; sheetId=null;
-  const c=inWeek(k), list=open().filter(p=>!pWeeks(p).includes(k)&&(size==='s'?small(p):!small(p))).sort(prioSort);
+  const c=inWeek(k), list=open().filter(p=>!isMini(p)&&!pWeeks(p).includes(k)&&(size==='s'?small(p):!small(p))).sort(prioSort);
   let html='', lastQ=-1;
   list.forEach(p=>{const q=quad(p); if(q!==lastQ){lastQ=q; html+=`<span class="quad"><i style="background:${QUADS[q][1]}"></i>${QUADS[q][0]}</span>`;}
     const inPrev=pWeeks(p).includes(wkAdd(k,-1));
@@ -967,9 +1015,9 @@ function summary(){
   c.n.sort(prioSort).forEach(p=>L.push('- '+p.emoji+' '+p.name+' ['+'★'.repeat(p.imp)+(urgent(p)?' · urgent':'')+'] → '+(p.next||'prochaine action à définir')));
   if(c.s.length){L.push('PETITS'); c.s.forEach(p=>L.push('- '+p.emoji+' '+p.name+(p.next?' → '+p.next:'')));}
   L.push('','SEMAINE '+wkNum(nk)+' PRÉVUE'); const nn=[...nx.n,...nx.s]; if(nn.length) nn.forEach(p=>L.push('- '+p.emoji+' '+p.name+(small(p)?' (petit)':''))); else L.push('- rien encore');
-  const pool=open().filter(p=>state(p)==='attente'&&quad(p)<=1).sort(prioSort);
+  const pool=open().filter(p=>!isMini(p)&&state(p)==='attente'&&quad(p)<=1).sort(prioSort);
   L.push('','IMPORTANTS PAS ENCORE PLACÉS'); if(pool.length) pool.forEach(p=>L.push('- '+p.emoji+' '+p.name+(p.due?' (⏱ '+fmt(p.due)+')':''))); else L.push('- aucun');
-  const pt=S.lists.petites.filter(v=>!v.d); L.push('','PETITES TÂCHES ET IDÉES'); if(pt.length) pt.forEach(v=>L.push('- '+v.t)); else L.push('- rien');
+  const mp=S.projects.filter(p=>isMini(p)&&!p.closed).sort(prioSort); L.push('','MINI PROJETS'); if(mp.length) mp.forEach(p=>L.push('- '+p.name+' ['+'★'.repeat(p.imp)+(urgent(p)?' · urgent':'')+']'+(p.due?' (⏱ '+fmt(p.due)+')':'')+(p.tasks.length?' · '+p.tasks.filter(x=>x.d).length+'/'+p.tasks.length+' étapes':''))); else L.push('- aucun');
   L.push('','EN VRAC, À TRIER'); if(S.inbox.length) S.inbox.forEach(v=>L.push('- '+v.t)); else L.push('- rien');
   openSheet(`<div class="shead"><h2>Recap<small>à coller dans la conversation</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
   <pre class="sum" id="sumtxt">${esc(L.join('\n'))}</pre><button class="btn" data-act="copySum">Copier le texte</button></div>`,'recap');
@@ -1059,6 +1107,7 @@ let tt; function toast(m){const t=document.getElementById('toast'); t.textConten
 function syncForm(){const a=document.getElementById('f-amount'),n=document.getElementById('f-note'),d=document.getElementById('f-date'); if(a) ui.amount=a.value; if(n) ui.note=n.value; if(d) ui.date=d.value;}
 function placeWeekly(p,k){ if(pWeeks(p).includes(k)) return true; if(!canAdd(p,k)) return false; p.weeks.push(k); p.weeks.sort(); save(); return true; }
 function afterCreate(p){
+  if(isMini(p)){ toast('Mini projet ajouté : '+p.name); if(ctx&&ctx.fromFill) weekSheet(ctx.k); else closeSheet(); return; }
   if(ctx&&ctx.fromFill){ const k=ctx.k;
     if(isDay(p)){ placeSheet(p.id,null,k); return; }
     if(placeWeekly(p,k)){ toast(p.emoji+' '+p.name+' · semaine '+wkNum(k)); weekSheet(k); return; }
@@ -1070,7 +1119,7 @@ document.addEventListener('click',e=>{
   const tab=e.target.closest('.tab'); if(tab){ui.view=tab.dataset.view; window.scrollTo(0,0); render(); return;}
   const el=e.target.closest('[data-act]'); if(!el||el.tagName==='FORM') return;
   const a=el.dataset.act, id=el.dataset.id;
-  if(a==='task'||a==='petiteDone') return;
+  if(a==='task'||a==='petiteDone'||a==='miniChk') return;
   if(a==='open') detail(id);
   else if(a==='close') closeSheet();
   else if(a==='summary') summary();
@@ -1093,6 +1142,10 @@ document.addEventListener('click',e=>{
   else if(a==='clearDone'){S.lists.petites=S.lists.petites.filter(v=>!v.d); save(); render();}
   else if(a==='tags') tagsSheet();
   else if(a==='offs') offsSheet();
+  else if(a==='minis') minisSheet();
+  else if(a==='minisDone') minisSheet(true);
+  else if(a==='miniDone'){ const p=P(sheetId); p.closed=todayS; save(); minisSheet(); bravo(p); }
+  else if(a==='itemMini'){ const v=takeItem(); if(v){ S.projects.push(newMini(v.t)); save(); toast('Mini projet ajouté'); } closeSheet(); }
   else if(a==='notes') notesSheet(sheetId);
   else if(a==='nCol') nAct('nCol',el.dataset.n);
   else if(['nIn','nOut','nUp','nDown','nDone','nDel'].includes(a)) nAct(a,lastNid);
@@ -1106,7 +1159,7 @@ document.addEventListener('click',e=>{
   else if(a==='mv'){const k=ui.wk, ord=weekOrder(k,inWeek(k).n).map(p=>p.id), i=ord.indexOf(id), j=i+Number(el.dataset.d); if(j>=0&&j<ord.length){[ord[i],ord[j]]=[ord[j],ord[i]]; S.order=S.order||{}; S.order[k]=ord; save();} render();}
   else if(a==='rmWk'){const p=P(id); removeFromWeek(p,ui.wk); save(); toast(p.emoji+' '+p.name+' retiré de la semaine '+wkNum(ui.wk)); render();}
   else if(a==='delAsk') detail(sheetId,'del');
-  else if(a==='delOk'){const p=P(sheetId); S.projects=S.projects.filter(x=>x.id!==p.id); S.entries=S.entries.filter(e=>e.pid!==p.id); save(); toast(p.emoji+' '+p.name+' supprimé'); closeSheet();}
+  else if(a==='delOk'){const p=P(sheetId); S.projects=S.projects.filter(x=>x.id!==p.id); S.entries=S.entries.filter(e=>e.pid!==p.id); save(); toast((p.emoji?p.emoji+' ':'')+p.name+' supprimé'); if(isMini(p)) minisSheet(); else closeSheet();}
   else if(a==='tagDel') tagsSheet(el.dataset.t);
   else if(a==='tagDelNo') tagsSheet();
   else if(a==='tagDelOk'){const id=el.dataset.t, t=T(id); S.tags=S.tags.filter(x=>x.id!==id); S.projects.forEach(p=>p.tags=p.tags.filter(x=>x!==id)); if(ui.tag===id) ui.tag=null; save(); toast('Tag « '+t.name+' » supprimé'); tagsSheet();}
@@ -1118,7 +1171,7 @@ document.addEventListener('click',e=>{
   else if(a==='toggleDay'){const p=P(sheetId), d=el.dataset.d, k=el.dataset.k; if(p.days.includes(d)){p.days=p.days.filter(x=>x!==d); save(); placeSheet(sheetId,null,ctx&&ctx.k0||undefined);} else if(canAdd(p,k)){p.days.push(d); p.days.sort(); save(); placeSheet(sheetId,null,ctx&&ctx.k0||undefined);} else placeSheet(sheetId,fullMsg(p,k),ctx&&ctx.k0||undefined);}
   else if(a==='dayShift'){const k0=wkAdd(el.dataset.k,Number(el.dataset.d)); ctx=Object.assign(ctx||{},{k0}); placeSheet(sheetId,null,k0);}
   else if(a==='unplace'){const p=P(sheetId), k=el.dataset.k; if(isDay(p)) p.days=p.days.filter(x=>x!==k); else p.weeks=p.weeks.filter(w=>w!==k); save(); detail(sheetId);}
-  else if(a==='size'){const p=P(sheetId), s=el.dataset.s; const wasDay=isDay(p); p.size=s; if(wasDay!==isDay(p)){ if(isDay(p)) p.weeks=[]; else {p.weeks=pWeeks(Object.assign({},p,{size:'j2'})); p.days=[];} } save(); detail(sheetId);}
+  else if(a==='size'){const p=P(sheetId), s=el.dataset.s; const wasDay=isDay(p); if(isMini(p)&&s!=='mini'){ if(!p.emoji) p.emoji='✨'; if(p.color===MINI_COLOR) p.color=COLORS[Math.floor(Math.random()*COLORS.length)]; } if(s==='mini'){ p.emoji=''; p.color=MINI_COLOR; p.weeks=[]; p.days=[]; } p.size=s; if(wasDay!==isDay(p)){ if(isDay(p)) p.weeks=[]; else {p.weeks=pWeeks(Object.assign({},p,{size:'j2'})); p.days=[];} } save(); detail(sheetId);}
   else if(a==='imp'){P(sheetId).imp=Number(el.dataset.n); save(); detail(sheetId);}
   else if(a==='clearDue'){P(sheetId).due=null; save(); detail(sheetId);}
   else if(a==='tag'){const p=P(sheetId), t=el.dataset.t; p.tags=p.tags.includes(t)?p.tags.filter(x=>x!==t):[...p.tags,t]; save(); detail(sheetId);}
@@ -1133,6 +1186,7 @@ document.addEventListener('click',e=>{
   else if(a==='emojiBack') emojiDone(null);
   else if(a==='create'){syncDraft(); const d=draft; if(!d.name.trim()){toast('Donne un nom au projet'); return;}
     const p={id:'p'+Date.now(),emoji:d.emoji,color:d.color,name:d.name.trim(),size:d.size,imp:d.imp,due:d.due||null,tags:d.tags,weeks:[],days:[],why:d.why.trim(),next:'',folder:null,tasks:[]};
+    if(p.size==='mini'){ p.emoji=''; p.color=MINI_COLOR; p.tags=[]; }
     if(d.fromItem){const arr=itemArr(d.fromItem.src), i=arr.findIndex(v=>v.id===d.fromItem.vid); if(i>=0) arr.splice(i,1);} S.projects.push(p); save(); draft=null; if(d.fromItem){toast(p.emoji+' '+p.name+' créé'); closeSheet(); return;} afterCreate(p);}
   else if(a==='kind'){syncForm(); ui.kind=el.dataset.k; ui.amount=''; render();}
   else if(a==='pick'){syncForm(); ui.pid=id; render();}
@@ -1152,9 +1206,10 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.act==='task'){const p=P(sheetId); p.tasks[Number(t.dataset.i)].d=t.checked; save(); detail(sheetId); return;}
+  if(t.dataset.act==='miniChk'){ const p=P(t.dataset.id); if(p){ p.closed=todayS; save(); setTimeout(()=>{ minisSheet(); bravo(p); },250); } return; }
   if(t.dataset.act==='petiteDone'){const v=S.lists.petites.find(x=>x.id===t.dataset.v); if(v){v.d=t.checked; save(); render();} return;}
   if(t.id==='f-item'&&ctx&&ctx.vid){const v=itemArr(ctx.src).find(x=>x.id===ctx.vid); if(v&&t.value.trim()){v.t=t.value.trim(); save();} }
-  if(t.dataset.field&&sheetId){const p=P(sheetId), f=t.dataset.field; let v=t.value.trim(); if(f==='due') v=v||null; p[f]=v; save(); toast('Enregistré'); if(f==='due') detail(sheetId);}
+  if(t.dataset.field&&sheetId){const p=P(sheetId), f=t.dataset.field; let v=t.value.trim(); if(f==='name'&&!v) return; if(f==='due') v=v||null; p[f]=v; save(); toast('Enregistré'); if(f==='due') detail(sheetId);}
   if(t.id==='n-due'&&draft){draft.due=t.value; const h=document.getElementById('n-duehint'); if(h) h.textContent=dueHint(draft.due);}
   if(t.id==='f-date') ui.date=t.value;
   if(t.dataset.tagname){const tg=T(t.dataset.tagname), v=t.value.trim(); if(tg&&v){tg.name=v; save(); toast('Tag renommé');}}
@@ -1166,6 +1221,7 @@ document.addEventListener('input',e=>{const t=e.target;
 });
 document.addEventListener('submit',e=>{e.preventDefault(); const f=e.target.dataset.act;
   if(f==='addVrac'){const i=document.getElementById('f-vrac'), v=i.value.trim(); if(!v) return; S.inbox.push({id:'v'+Date.now(),t:v}); save(); render(); const n=document.getElementById('f-vrac'); if(n) try{n.focus();}catch(e){} toast('Noté en vrac');}
+  if(f==='addMini'){ const i=document.getElementById('f-mini'), v=i.value.trim(); if(!v) return; S.projects.push(newMini(v)); save(); render(); minisSheet(); const n=document.getElementById('f-mini'); if(n) try{n.focus();}catch(err){} toast('Mini projet ajouté'); }
   if(f==='addVracQ'){const i=document.getElementById('q-vrac'), v=i.value.trim(); if(!v) return; S.inbox.push({id:'v'+Date.now(),t:v}); save(); render(); toast('Noté en vrac'); closeSheet();}
   if(f==='addOff'){let a=document.getElementById('o-s').value, b=document.getElementById('o-e').value||a; if(!a) return; if(b<a){const x=a; a=b; b=x;} S.offs.push({id:'o'+Date.now(),s:a,e:b,l:document.getElementById('o-l').value.trim()||'Congé'}); save(); render(); offsSheet(); toast('Ajouté au planning');}
   if(f==='addTask'){const v=document.getElementById('f-task').value.trim(); if(!v) return; P(sheetId).tasks.push({t:v,d:false}); save(); detail(sheetId);}
@@ -1280,7 +1336,7 @@ async function pull(full){
       if(data.length<1000) break; from+=1000;
     }
     lastPull=maxTs; persist();
-    if(changed){ S=fromRows(prev); render(); }
+    if(changed){ S=fromRows(prev); migratePetites(); render(); }
     lastOk=Date.now(); syncErr=''; setSync(); return true;
   }catch(e){ syncErr=(e&&e.message)||String(e); setSync(); return false; }
 }
@@ -1298,6 +1354,7 @@ async function enter(user){
   if(c){ prev=c.prev||{}; dirty=new Set(c.dirty||[]); lastPull=c.lastPull||null; }
   S=fromRows(prev); booted=true; render(); setSync();
   const ok=await pull(!c);
+  if(migratePetites()) render();
   if(ok&&!c&&!Object.keys(prev).length){ S.tags=DEFAULT_TAGS.map(([id,name],i)=>({id,name,o:i})); save(); render(); }
   push();
 }
@@ -1310,6 +1367,7 @@ async function startApp(){
   sb.auth.onAuthStateChange((ev,sess)=>{ if(ev==='SIGNED_OUT'&&UID){ UID=null; showLogin(); } });
   addEventListener('online',()=>{ setSync(); pull().then(()=>push()); });
   addEventListener('offline',()=>setSync());
+  document.addEventListener('visibilitychange',()=>{ if(document.visibilityState==='hidden'&&MINI){ $scrim.hidden=true; sheetKey=null; sheetId=null; ctx=null; draft=null; ui.view='mini'; try{ document.activeElement&&document.activeElement.blur(); }catch(e){} render(); window.scrollTo(0,0); } });
   document.addEventListener('visibilitychange',()=>{ if(!UID) return; if(document.visibilityState==='visible') pull().then(()=>push()); else push(); });
   setInterval(()=>{ if(UID&&document.visibilityState==='visible') pull(); },60000);
 }
