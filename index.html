@@ -1301,6 +1301,11 @@ document.getElementById('loginForm').addEventListener('submit',async e=>{
   }catch(err){ const m=String(err&&err.message||err); showLogin(/invalid/i.test(m)?'Adresse ou mot de passe incorrect.':!navigator.onLine?'Pas de réseau : la première connexion demande internet.':'Connexion impossible : '+m); }
   b.disabled=false; b.textContent='Se connecter';
 },true);
+const isStandalone=()=>{ try{ return matchMedia('(display-mode: standalone)').matches||matchMedia('(display-mode: fullscreen)').matches; }catch(e){ return false; } };
+const fsSupported=()=>!!(document.documentElement.requestFullscreen)&&!isStandalone();
+const fsAuto=()=>{ try{ return localStorage.getItem('etabli-fs')==='1'; }catch(e){ return false; } };
+function goFull(){ if(!fsSupported()||document.fullscreenElement) return; try{ const r=document.documentElement.requestFullscreen({navigationUI:'hide'}); if(r&&r.catch) r.catch(()=>{}); }catch(e){} }
+document.addEventListener('pointerup',()=>{ if(fsAuto()) goFull(); },true);
 function accountSheet(confirmOut){
   sheetId=null; ctx=null;
   const st=!navigator.onLine?'Hors ligne':syncErr?'Problème : '+syncErr:dirty.size?dirty.size+' changement'+(dirty.size>1?'s':'')+' en attente d\'envoi':'Tout est enregistré';
@@ -1309,6 +1314,7 @@ function accountSheet(confirmOut){
    <div class="bilan"><b>${esc(st)}</b><p>Dernier contact avec le serveur : ${t}</p></div>
    <button class="btn" data-act="syncNow">Synchroniser maintenant</button>
    <button class="btn ghost" data-act="exportData">Exporter mes données (fichier)</button>
+   ${fsSupported()?`<div class="field"><span class="lbl">Sur cet appareil</span><button class="btn ghost" data-act="fsToggle">${fsAuto()?'✓ Plein écran automatique : activé':'Plein écran automatique : désactivé'}</button><p class="note" style="margin:0">Cache la barre du navigateur dès que tu touches l'écran. Utile si le navigateur n'ouvre pas l'app en plein écran tout seul.</p></div>`:''}
    ${confirmOut?`<div class="danger"><div>${dirty.size?'<b>'+dirty.size+' changement'+(dirty.size>1?'s':'')+' pas encore envoyé'+(dirty.size>1?'s':'')+'</b> seraient perdus. ':''}Se déconnecter de cet appareil ?</div><div class="actions"><button class="btn ghost" data-act="account">Annuler</button><button class="btn warn" data-act="logoutOk">Se déconnecter</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="logout">Se déconnecter de cet appareil</button>`}
   </div>`,'acct');
 }
@@ -1316,6 +1322,7 @@ document.addEventListener('click',async e=>{
   const el=e.target.closest&&e.target.closest('[data-act]'); if(!el) return; const a=el.dataset.act;
   if(a==='account') accountSheet();
   else if(a==='logout') accountSheet(true);
+  else if(a==='fsToggle'){ const on=!fsAuto(); try{ localStorage.setItem('etabli-fs',on?'1':'0'); }catch(err){} if(on) goFull(); else if(document.fullscreenElement){ try{ document.exitFullscreen(); }catch(err){} } accountSheet(); }
   else if(a==='syncNow'){ el.disabled=true; el.textContent='Synchro…'; await push(); await pull(true); await push(); accountSheet(); toast(syncErr?'Problème de synchro':'Synchronisé'); }
   else if(a==='exportData'){ const blob=new Blob([JSON.stringify({app:'etabli',version:1,exported:new Date().toISOString(),data:S},null,2)],{type:'application/json'}); const u=URL.createObjectURL(blob); const l=document.createElement('a'); l.href=u; l.download='etabli-'+todayS+'.json'; document.body.appendChild(l); l.click(); setTimeout(()=>{URL.revokeObjectURL(u); l.remove();},1000); }
   else if(a==='logoutOk'){ try{ localStorage.removeItem(CK()); }catch(err){} UID=null; try{ await sb.auth.signOut(); }catch(err){} location.reload(); }
