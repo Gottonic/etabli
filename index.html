@@ -289,6 +289,15 @@ textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;dis
 .tcol{width:24px;height:24px;border:1px solid var(--line);background:var(--sw);padding:0}
 .tcol.none{background:linear-gradient(135deg,transparent 45%,var(--neg) 45%,var(--neg) 55%,transparent 55%),var(--cell)}
 .tcol[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
+.durrow{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.dfree{display:flex;align-items:center;gap:8px;border:2px solid var(--ink);background:var(--cell);padding:0 10px}
+.dfree .input{border:0;padding:10px 0;font-family:var(--mono);font-size:1.3rem;font-weight:600;width:100%;min-width:0;background:transparent}
+.dfree span{font-size:.85rem;color:var(--muted);white-space:nowrap}
+.dmini{border:2px solid var(--ink);background:var(--cell);font-weight:700;padding:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px}
+.dmini small{font-weight:400;font-size:.75rem;color:var(--muted)}
+.dmini[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.dmini[aria-pressed="true"] small{color:var(--paper);opacity:.8}
+.tagdel{border:1px solid var(--neg);background:var(--cell);color:var(--neg);font-size:.8rem;font-weight:700;padding:5px 8px;white-space:nowrap}
 .danger{border:2px solid var(--neg);background:var(--cell);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 
 /* Cases de la semaine */
@@ -325,7 +334,7 @@ textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;dis
 .gnav .mid{flex:1}
 .gantt{overflow-x:auto;border:1px solid var(--ink);background:var(--cell);--cw:28px;--lw:0px}
 .gantt .gl{display:none}
-.glab{grid-row:1;z-index:1;align-self:center;font-size:.78rem;font-weight:700;white-space:nowrap;overflow:hidden;padding-left:4px;color:var(--ink)}
+.glab{grid-row:1;z-index:1;align-self:center;font-size:.78rem;font-weight:700;line-height:1.15;overflow:hidden;padding-left:4px;color:var(--ink);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
 .gin{width:calc(var(--lw) + var(--cw) * var(--n))}
 .grow{display:flex;border-top:1px solid var(--grid)}
 .grow:first-child{border-top:0}
@@ -352,7 +361,11 @@ textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;dis
 .hd .dn.we{background:#E2DFD5}
 .hd .dn.off{background:#EE9DC0}
 .hd .dn.tod{background:var(--ink);color:#fff;font-weight:600}
-.gbar{grid-row:1;margin:4px 0;border:0;background:var(--pc);color:var(--pt);font-size:.8rem;font-weight:700;padding:0 5px;display:flex;align-items:center;gap:4px;white-space:nowrap;overflow:hidden;text-align:left;z-index:1}
+.gbar{grid-row:1;margin:4px 0;border:0;background:var(--pc);color:var(--pt);font-size:.8rem;font-weight:700;padding:0 5px;display:flex;align-items:center;gap:4px;overflow:hidden;text-align:left;z-index:1;line-height:1.15}
+.gbar .ge{flex:none}
+.gbar .gt{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
+.grow.proj .gg{grid-template-rows:64px}
+.gbar.s{font-size:1.1rem}
 .gbar.s{justify-content:center;padding:0}
 .gdue{grid-row:1;z-index:2;align-self:center;justify-self:center;width:20px;height:20px;background:var(--ink);color:#fff;font-size:.68rem;display:grid;place-items:center;border:0;padding:0}
 .planlegend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.8rem;color:var(--muted);margin-top:10px;align-items:center}
@@ -717,13 +730,13 @@ function minisSheet(showDone){
 function detailMini(p,msg){
   const closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, hasNotes=p.notes&&p.notes.some(x=>x.t);
   openSheet(`<div class="shead" style="--pc:${MINI_COLOR};--pt:#1E1E1E"><h2>${esc(p.name)}<small>Mini projet${closed?' · terminé le '+fmt(p.closed):''}</small></h2><button class="xbtn" data-act="minis">‹ Liste</button></div><div class="sbody">
-  ${closed?'':`<div class="field"><label for="f-mname">Nom</label><input class="input" id="f-mname" data-field="name" value="${esc(p.name)}"></div>`}
   ${tasksBlock(p,closed,'étape')}
+  ${closed?'':`<div class="field"><label for="f-mname">Nom</label><input class="input" id="f-mname" data-field="name" value="${esc(p.name)}"></div>`}
   ${closed?'':`<div class="field"><span class="lbl">Importance</span>${starPick(p.imp,'imp')}</div>
   <div class="field"><label for="f-due">Échéance</label><div class="duerow"><input class="input" type="date" id="f-due" data-field="due" value="${p.due||''}"><button data-act="clearDue">Aucune</button></div><p class="duehint">${dueHint(p.due)}</p></div>`}
   <div class="field"><span class="lbl">Notes</span>${hasNotes?`<button class="notesprev" data-act="notes">${p.notes.filter(x=>x.t).slice(0,3).map(x=>`<span style="padding-left:${x.l*14}px">• ${esc(x.t)}</span>`).join('')}<b>Ouvrir les notes</b></button>`:`<button class="btn ghost" data-act="notes">+ Notes</button>`}</div>
   ${closed?`<button class="btn ghost" data-act="reopen">Remettre en cours</button>`:`<div class="actions"><button class="btn ghost" data-act="miniSave">Valider</button><button class="btn" data-act="miniDone">Clôturer le projet</button></div>`}
-  ${closed?'':`<details class="more"><summary>En faire un projet plus grand</summary><div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(true,null,'dur')}</div><p class="note" style="margin:0">Choisir une autre durée le transforme en projet complet, avec émoji, couleur et planning.</p></details>`}
+  ${closed?'':`<details class="more"><summary>En faire un projet plus grand</summary><div class="field"><span class="lbl">Durée en jours de travail</span>${durPick(true,null,'dur')}</div><p class="note" style="margin:0">Une durée d'1 jour ou plus le transforme en projet complet, avec émoji, couleur et planning.</p></details>`}
   ${msg==='del'?`<div class="danger"><div>Supprimer <b>${esc(p.name)}</b> définitivement ?</div><div class="actions"><button class="btn ghost" data-act="back">Annuler</button><button class="btn warn" data-act="delOk">Supprimer</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="delAsk">Supprimer</button>`}
   </div>`,'d:'+p.id);
 }
@@ -821,7 +834,7 @@ function vPlanning(){
   const rowHtml=lanes.map((occ,L)=>{
     const freeAfter=b=>{let n=0; for(let i=b+1;i<N&&n<10&&!occ.has(i);i++) n++; return n;};
     const bars=items.filter(it=>it.lane===L).map(({p,segs})=>{ let named=false;
-      return segs.map(([a,b])=>{const len=b-a+1, long=len>=5; let out=`<button class="gbar${long?'':' s'}" style="${pv(p)};grid-column:${a+1} / span ${len}" data-act="open" data-id="${p.id}" title="${esc(p.name)}">${long?`${p.emoji} ${esc(p.name)}`:p.emoji}</button>`;
+      return segs.map(([a,b])=>{const len=b-a+1, long=len>=5; let out=`<button class="gbar${long?'':' s'}" style="${pv(p)};grid-column:${a+1} / span ${len}" data-act="open" data-id="${p.id}" title="${esc(p.name)}">${long?`<span class="ge">${p.emoji}</span><span class="gt">${esc(p.name)}</span>`:p.emoji}</button>`;
         if(long) named=true; else if(!named){const f=freeAfter(b); if(f>=3){out+=`<span class="glab" style="grid-column:${b+2} / span ${f}">${esc(p.name)}</span>`; named=true;}} return out;}).join('');
     }).join('');
     return `<div class="grow proj"><div class="gl"></div><div class="gg">${bg}${bars}</div></div>`;
@@ -979,8 +992,8 @@ function tasksBlock(p,closed,word){
    ${list.length?`<ul class="list tasks" data-pid="${p.id}">${list.map(({x,i})=>`<li class="${x.d?'done':''}" data-i="${i}"><input type="checkbox" data-act="task" data-i="${i}" ${x.d?'checked':''} ${closed?'disabled':''} aria-label="Valider la ${word}"><span class="t tt" data-act="tedit" data-i="${i}">${taskText(x.t)}</span>${closed||only?'':'<span class="drag" aria-label="Glisser pour déplacer">≡</span>'}</li>`).join('')}</ul>`:''}
    ${closed?'':`<form class="inline" data-act="addTask"><input class="input" id="f-task" placeholder="Nouvelle ${word}" aria-label="Nouvelle ${word}"><button class="btn" type="submit">+</button></form><p class="note" style="margin:0">Durée entre parenthèses : (30min), (2h), (1j) — 1j compte 8 h. Ajoute @admin pour une tâche administrative.</p>`}</div>`;
 }
-function durPick(isM,dur,act){ return `<div class="durs"><button class="dmini" data-act="${act}" data-v="mini" aria-pressed="${isM}"><b>Mini</b><span>moins d'1 jour · liste à part</span></button>${DUR_OPTS.map(v=>`<button data-act="${act}" data-v="${v}" aria-pressed="${!isM&&dur===v}"><b>${v}</b><span>jour${v>1?'s':''}</span></button>`).join('')}<label class="dother"><span>Autre</span><input class="input" type="number" min="0.5" step="0.5" inputmode="decimal" data-durother="${act}" value="${!isM&&dur!=null&&!DUR_OPTS.includes(dur)?dur:''}" aria-label="Autre durée en jours" placeholder="j"></label></div>`; }
-function applyDur(p,v){ if(v==='mini'){ p.size='mini'; p.dur=null; p.emoji=''; p.color=MINI_COLOR; p.weeks=[]; p.days=[]; return; } const n=Number(v); if(!(n>0)) return; if(isMini(p)){ if(!p.emoji) p.emoji='✨'; if(p.color===MINI_COLOR) p.color=COLORS[Math.floor(Math.random()*COLORS.length)]; } p.size='proj'; p.dur=n; }
+function durPick(isM,dur,act){ return `<div class="durrow"><label class="dfree${isM?'':' on'}"><input class="input" type="number" min="0.5" step="0.5" inputmode="decimal" data-durother="${act}" value="${!isM&&dur!=null?dur:''}" placeholder="—" aria-label="Durée en jours"><span>jour(s)</span></label><button class="dmini" data-act="${act}" data-v="mini" aria-pressed="${isM}">Moins d'1 jour<small>→ mini projet</small></button></div>`; }
+function applyDur(p,v){ if(v!=='mini'&&Number(v)<1) v='mini'; if(v==='mini'){ p.size='mini'; p.dur=null; p.emoji=''; p.color=MINI_COLOR; p.weeks=[]; p.days=[]; return; } const n=Number(v); if(!(n>0)) return; if(isMini(p)){ if(!p.emoji) p.emoji='✨'; if(p.color===MINI_COLOR) p.color=COLORS[Math.floor(Math.random()*COLORS.length)]; } p.size='proj'; p.dur=n; }
 function sizePick(cur,act){return `<div class="sizes">${Object.entries(SIZES).map(([k,s])=>`<button data-act="${act}" data-s="${k}" aria-pressed="${cur===k}"><b>${s.l}</b><span>${s.sub}</span></button>`).join('')}</div>`;}
 function tagPick(sel,act){return `<div class="pchips">${S.tags.map(t=>`<button class="tchip${t.color?' col':''}"${tcs(t)} data-act="${act}" data-t="${t.id}" aria-pressed="${sel.includes(t.id)}">${esc(t.name)}</button>`).join('')}</div>
   <form class="inline" data-act="newTag" data-for="${act}"><input class="input" id="f-tag" placeholder="Nouveau tag" aria-label="Nouveau tag" maxlength="20"><button class="btn" type="submit">+</button></form>`;}
@@ -993,7 +1006,7 @@ function newSheet(keep){
   const d=draft;
   openSheet(`<div class="shead"><h2>Nouveau projet<small>${ctx?'pour la semaine '+wkNum(ctx.k):'il ira dans « À planifier »'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
    <div class="namerow" style="--pc:${d.color}">${d.size==='mini'?'':`<button class="emobtn" data-act="emojiPick" data-for="new" aria-label="Choisir un émoji" id="nemo">${d.emoji}</button>`}<input class="input" id="n-name" placeholder="Ex. Monter le tunnel de semis" value="${esc(d.name)}" aria-label="Nom du projet"></div>
-   <div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(d.size==='mini',d.dur,'ndur')}</div>
+   <div class="field"><span class="lbl">Durée en jours de travail</span>${durPick(d.size==='mini',d.dur,'ndur')}</div>
    <div class="field"><span class="lbl">Importance</span>${starPick(d.imp,'nimp')}</div>
    <div class="field"><label for="n-due">Échéance (facultatif)</label><div class="duerow"><input class="input" type="date" id="n-due" value="${d.due}"><button data-act="nodue">Aucune</button></div><p class="duehint" id="n-duehint">${dueHint(d.due)}</p></div>
    ${d.size==='mini'?'':`<div class="field"><span class="lbl">Tags</span>${tagPick(d.tags,'ntag')}</div>
@@ -1004,7 +1017,7 @@ function newSheet(keep){
    <button class="btn" data-act="create">Créer${ctx?' et placer':''}</button></div>`,'new');
   if(!keep) setTimeout(()=>{const n=document.getElementById('n-name'); if(n) try{n.focus();}catch(e){}},60);
 }
-function syncDraft(){ if(!draft) return; const g=id=>document.getElementById(id); if(g('n-name')) draft.name=g('n-name').value; if(g('n-due')) draft.due=g('n-due').value; if(g('n-why')) draft.why=g('n-why').value; }
+function syncDraft(){ if(!draft) return; const di=document.querySelector('[data-durother=ndur]'); if(di&&di.value){ const v=parseFloat(String(di.value).replace(',','.')); if(v>0){ if(v<1) draft.size='mini'; else { draft.size='proj'; draft.dur=v; } } } const g=id=>document.getElementById(id); if(g('n-name')) draft.name=g('n-name').value; if(g('n-due')) draft.due=g('n-due').value; if(g('n-why')) draft.why=g('n-why').value; }
 
 /* Choix d'émoji */
 let emojiFor=null;
@@ -1029,23 +1042,24 @@ function detail(id,msg){
   <div><span class="state st-${st}">${STATE[st]}</span>${urgHtml(p)} ${tagsHtml(p)}</div>
   ${closed?`<div class="bilan"><span class="lbl">Clôturé le ${fmt(p.closed)}</span>${p.bilan&&p.bilan.learn?`<p><b>Ce que j'en retire.</b> ${esc(p.bilan.learn)}</p>`:''}${p.bilan&&p.bilan.diff?`<p><b>À refaire autrement.</b> ${esc(p.bilan.diff)}</p>`:''}${!(p.bilan&&(p.bilan.learn||p.bilan.diff))?'<p>Pas de bilan noté.</p>':''}</div>`:''}
   ${msg&&msg!=='del'?msg:''}
+  ${tasksBlock(p,closed,'tâche')}
   <div class="field"><span class="lbl">Placement · ${placed.length}</span>
     ${placed.length?`<ul class="list">${placed.map(x=>`<li><span class="t" style="font-family:var(--mono);font-size:.88rem">${x.l}${x.w===CUR?' <span class="state" style="background:var(--hl);font-size:.7rem;padding:1px 5px">cette sem.</span>':''}</span>${closed?'':`<button class="x" data-act="unplace" data-k="${x.k}" aria-label="Retirer">×</button>`}</li>`).join('')}</ul>`:'<p class="note" style="margin:0">Pas encore placé.</p>'}
     ${closed?'':`<div class="actions"><button class="btn ghost" data-act="place" data-m="j">Par jours</button><button class="btn ghost" data-act="place" data-m="s">Par semaines</button></div>`}
     ${durOf(p)>=20&&!closed?'<p class="note" style="margin:0">Projet d\'un mois ou plus : note ses grandes étapes dans les tâches.</p>':''}</div>
   ${closed?'':`<div class="field"><label for="f-next">Prochaine action</label><input class="input" id="f-next" data-field="next" value="${esc(p.next)}" placeholder="Le prochain geste concret"></div>
-  <div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(false,p.dur,'dur')}</div>
+
   <div class="field"><span class="lbl">Importance</span>${starPick(p.imp,'imp')}</div>
   <div class="field"><label for="f-due">Échéance</label><div class="duerow"><input class="input" type="date" id="f-due" data-field="due" value="${p.due||''}"><button data-act="clearDue">Aucune</button></div><p class="duehint">${dueHint(p.due)}</p></div>
+  <div class="field"><span class="lbl">Durée en jours de travail</span>${durPick(false,p.dur,'dur')}</div>
   <div class="field"><span class="lbl">Tags</span>${tagPick(p.tags,'tag')}</div>`}
-  ${tasksBlock(p,closed,'tâche')}
   <div class="field"><span class="lbl">Notes</span>${p.notes&&p.notes.some(x=>x.t)?`<button class="notesprev" data-act="notes">${p.notes.filter(x=>x.t).slice(0,3).map(x=>`<span style="padding-left:${x.l*14}px">• ${esc(x.t)}</span>`).join('')}<b>Ouvrir les notes · ${p.notes.filter(x=>x.t).length} ligne${p.notes.filter(x=>x.t).length>1?'s':''}</b></button>`:`<button class="btn ghost" data-act="notes">+ Feuille de notes</button>`}</div>
   <details class="more" ${p.why?'open':''}><summary>Pourquoi, dossier, couleur</summary>
   <div class="field"><label for="f-why">Pourquoi ce projet</label><textarea class="input" id="f-why" data-field="why" ${closed?'disabled':''}>${esc(p.why)}</textarea></div>
   <div class="field"><span class="lbl">Dossier sur l'ordi</span>${p.folder?`<div class="folder"><code id="fpath">${esc(folderPath(p))}</code><button data-act="copyPath">Copier</button></div>`:`<button class="btn ghost" data-act="mkFolder">Créer un dossier pour ce projet</button>`}</div>
   ${closed?'':`<div class="field"><span class="lbl">Couleur</span><div class="swatches">${COLORS.map(c=>`<button style="--sw:${c}" data-act="color" data-c="${c}" aria-pressed="${p.color===c}" aria-label="Couleur ${c}"></button>`).join('')}</div></div>`}
   </details>
-  ${closed?`<button class="btn ghost" data-act="reopen">Rouvrir le projet</button>`:`<button class="btn warn" data-act="closeStart">Clôturer le projet</button>`}
+  ${closed?`<button class="btn ghost" data-act="reopen">Rouvrir le projet</button>`:`<div class="actions"><button class="btn ghost" data-act="projSave">Valider</button><button class="btn" data-act="closeStart">Clôturer le projet</button></div>`}
   ${msg==='del'?`<div class="danger"><div>Supprimer <b>${p.emoji} ${esc(p.name)}</b> définitivement ? Pour garder une trace, clôture-le plutôt.</div><div class="actions"><button class="btn ghost" data-act="back">Annuler</button><button class="btn warn" data-act="delOk">Supprimer</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="delAsk">Supprimer le projet</button>`}
   </div>`,'d:'+id);
 }
@@ -1190,7 +1204,7 @@ function tagsSheet(confirmId){
   sheetId=null; ctx=null;
   const count=id=>S.projects.filter(p=>p.tags.includes(id)).length;
   openSheet(`<div class="shead"><h2>Tags<small>renommer, colorer ou supprimer</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
-   ${S.tags.length?`<ul class="list">${S.tags.map(t=>`<li style="flex-wrap:wrap;padding-right:12px"><input class="input" style="flex:1;min-width:0" data-tagname="${t.id}" value="${esc(t.name)}" aria-label="Nom du tag" maxlength="20"><span class="d" style="white-space:nowrap">${count(t.id)} projet${count(t.id)>1?'s':''}</span><div class="tcolors">${['',...TAG_COLORS].map(c=>`<button class="tcol${c?'':' none'}" style="--sw:${c||'transparent'}" data-act="tagColor" data-t="${t.id}" data-c="${c}" aria-pressed="${(t.color||'')===c}" aria-label="${c?'Couleur '+c:'Sans couleur'}"></button>`).join('')}</div>${confirmId===t.id?`<div class="actions" style="width:100%"><button class="btn ghost" data-act="tagDelNo">Annuler</button><button class="btn warn" data-act="tagDelOk" data-t="${t.id}">Supprimer « ${esc(t.name)} »</button></div>`:`<button class="x" data-act="tagDel" data-t="${t.id}" aria-label="Supprimer ${esc(t.name)}">×</button>`}</li>`).join('')}</ul>`:'<p class="empty">Aucun tag.</p>'}
+   ${S.tags.length?`<ul class="list">${S.tags.map(t=>`<li style="flex-wrap:wrap;padding-right:12px"><input class="input" style="flex:1;min-width:0" data-tagname="${t.id}" value="${esc(t.name)}" aria-label="Nom du tag" maxlength="20"><span class="d" style="white-space:nowrap">${count(t.id)} projet${count(t.id)>1?'s':''}</span><div class="tcolors">${['',...TAG_COLORS].map(c=>`<button class="tcol${c?'':' none'}" style="--sw:${c||'transparent'}" data-act="tagColor" data-t="${t.id}" data-c="${c}" aria-pressed="${(t.color||'')===c}" aria-label="${c?'Couleur '+c:'Sans couleur'}"></button>`).join('')}</div>${confirmId===t.id?`<div class="actions" style="width:100%"><button class="btn ghost" data-act="tagDelNo">Annuler</button><button class="btn warn" data-act="tagDelOk" data-t="${t.id}">Supprimer « ${esc(t.name)} »</button></div>`:`<button class="tagdel" data-act="tagDel" data-t="${t.id}">Supprimer tag</button>`}</li>`).join('')}</ul>`:'<p class="empty">Aucun tag.</p>'}
    <p class="note" style="margin:0">Supprimer un tag le retire des projets, sans toucher aux projets eux-mêmes.</p></div>`,'tags');
 }
 function copy(text,el){const fb=()=>{try{const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Texte sélectionné, copie-le');}catch(e){}}; try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(()=>toast('Copié'),fb); else fb(); }catch(e){fb();}}
@@ -1247,6 +1261,7 @@ document.addEventListener('click',e=>{
   else if(a==='tedit'){ const p=P(sheetId); if(!p||p.closed) return; const i=Number(el.dataset.i), inp=document.createElement('input'); inp.className='input tedit'; inp.value=p.tasks[i].t; inp.dataset.ti=i; inp.setAttribute('aria-label','Modifier la tâche'); el.replaceWith(inp); try{ inp.focus(); const L=inp.value.length; inp.setSelectionRange(L,L); }catch(err){} }
   else if(a==='minis') minisSheet();
   else if(a==='minisDone') minisSheet(true);
+  else if(a==='projSave'){ const p=P(sheetId), g=x=>document.getElementById(x); if(g('f-next')) p.next=g('f-next').value.trim(); if(g('f-due')) p.due=g('f-due').value||null; if(g('f-why')) p.why=g('f-why').value.trim(); save(); toast('Enregistré'); closeSheet(); }
   else if(a==='miniSave'){ const p=P(sheetId), nm=document.getElementById('f-mname'), du=document.getElementById('f-due'); if(nm&&nm.value.trim()) p.name=nm.value.trim(); if(du) p.due=du.value||null; save(); toast('Enregistré'); minisSheet(); }
   else if(a==='miniDone'){ const p=P(sheetId); p.closed=todayS; save(); minisSheet(); toast('✓ '+p.name); }
   else if(a==='itemMini'){ const v=takeItem(); if(v){ S.projects.push(newMini(v.t)); save(); toast('Mini projet ajouté'); } closeSheet(); }
@@ -1281,7 +1296,7 @@ document.addEventListener('click',e=>{
   else if(a==='clearDue'){P(sheetId).due=null; save(); detail(sheetId);}
   else if(a==='tag'){const p=P(sheetId), t=el.dataset.t; p.tags=p.tags.includes(t)?p.tags.filter(x=>x!==t):[...p.tags,t]; save(); detail(sheetId);}
   else if(a==='nsize'){syncDraft(); draft.size=el.dataset.s; newSheet(true);}
-  else if(a==='ndur'){syncDraft(); const v=el.dataset.v; if(v==='mini') draft.size='mini'; else { draft.size='proj'; draft.dur=Number(v); } newSheet(true);}
+  else if(a==='ndur'){ const di=document.querySelector('[data-durother=ndur]'); if(di) di.value=''; syncDraft(); if(el.dataset.v==='mini') draft.size=draft.size==='mini'?'proj':'mini'; newSheet(true);}
   else if(a==='dur'){const p=P(sheetId); applyDur(p,el.dataset.v); save(); detail(sheetId);}
   else if(a==='nimp'){syncDraft(); draft.imp=Number(el.dataset.n); newSheet(true);}
   else if(a==='nodue'){syncDraft(); draft.due=''; newSheet(true);}
@@ -1313,7 +1328,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.act==='task'){const p=P(sheetId); p.tasks[Number(t.dataset.i)].d=t.checked; save(); detail(sheetId); return;}
-  if(t.dataset.durother){ const v=parseFloat(String(t.value).replace(',','.')); if(!(v>0)) return; if(t.dataset.durother==='ndur'){ syncDraft(); draft.size='proj'; draft.dur=v; newSheet(true); } else { const p=P(sheetId); applyDur(p,v); save(); detail(sheetId); } return; }
+  if(t.dataset.durother){ const v=parseFloat(String(t.value).replace(',','.')); if(!(v>0)) return; if(t.dataset.durother==='ndur'){ const was=draft.size; syncDraft(); if(draft.size!==was) setTimeout(()=>{ if(draft&&sheetKey==='new') newSheet(true); },180); } else { const p=P(sheetId); applyDur(p,v); save(); detail(sheetId); } return; }
   if(t.dataset.act==='miniChk'){ const p=P(t.dataset.id); if(p){ p.closed=todayS; save(); setTimeout(()=>{ minisSheet(); toast('✓ '+p.name); },250); } return; }
   if(t.dataset.act==='petiteDone'){const v=S.lists.petites.find(x=>x.id===t.dataset.v); if(v){v.d=t.checked; save(); render();} return;}
   if(t.id==='f-item'&&ctx&&ctx.vid){const v=itemArr(ctx.src).find(x=>x.id===ctx.vid); if(v&&t.value.trim()){v.t=t.value.trim(); save();} }
