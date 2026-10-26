@@ -375,6 +375,8 @@ textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;dis
 .hd .dn.tod{background:var(--ink);color:#fff;font-weight:600}
 .gbar{grid-row:1;margin:4px 0;border:0;background:var(--pc);color:var(--pt);font-size:.8rem;font-weight:700;padding:0 5px;display:flex;align-items:center;gap:4px;overflow:hidden;text-align:left;z-index:1;line-height:1.15}
 .gbar .ge{flex:none}
+.gbar:not(.s){overflow:hidden;overflow:clip}
+.glbl{position:sticky;left:6px;display:flex;align-items:center;gap:4px;min-width:0;max-width:min(240px,100%)}
 .gbar .gt{min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow-wrap:anywhere}
 .grow.proj .gg{grid-template-rows:64px}
 .gbar.s{font-size:1.1rem}
@@ -847,8 +849,9 @@ function vPlanning(){
   const rowHtml=lanes.map((occ,L)=>{
     const freeAfter=b=>{let n=0; for(let i=b+1;i<N&&n<10&&!occ.has(i);i++) n++; return n;};
     const bars=items.filter(it=>it.lane===L).map(({p,segs,bridge})=>{ let named=false;
-      return segs.map(([a,b])=>{const len=b-a+1, long=len>=5, full=long&&!named; let out=`<button class="gbar${long?'':' s'}" style="${pv(p)};grid-column:${a+1} / span ${len}" data-act="open" data-id="${p.id}" title="${esc(p.name)}">${full?`<span class="ge">${p.emoji}</span><span class="gt">${esc(p.name)}</span>`:`<span class="ge">${p.emoji}</span>`}</button>`;
-        for(let i=a;i<=b;i++) if(bridge.has(i)) out+=`<span class="gwe" style="grid-column:${i+1}"></span>`;
+      return segs.map(([a,b])=>{const len=b-a+1, long=len>=5;
+        let bgs=''; if([...bridge].some(i=>i>=a&&i<=b)){ const light=`color-mix(in srgb, ${p.color} 38%, #fff)`, st=[]; for(let i=a;i<=b;i++){ const c=bridge.has(i)?light:p.color, x0=((i-a)/len*100).toFixed(3), x1=((i-a+1)/len*100).toFixed(3); st.push(`${c} ${x0}% ${x1}%`); } bgs=`;background:linear-gradient(to right,${st.join(',')})`; }
+        let out=`<button class="gbar${long?'':' s'}" style="${pv(p)};grid-column:${a+1} / span ${len}${bgs}" data-act="open" data-id="${p.id}" title="${esc(p.name)}">${long?`<span class="glbl"><span class="ge">${p.emoji}</span><span class="gt">${esc(p.name)}</span></span>`:`<span class="ge">${p.emoji}</span>`}</button>`;
         if(long) named=true; else if(!named){const f=freeAfter(b); if(f>=3){out+=`<span class="glab" style="grid-column:${b+2} / span ${f}">${esc(p.name)}</span>`; named=true;}} return out;}).join('');
     }).join('');
     return `<div class="grow proj"><div class="gl"></div><div class="gg">${bg}${bars}</div></div>`;
