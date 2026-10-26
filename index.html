@@ -261,6 +261,34 @@ body.minimode .mdue{font-size:.88rem}
 @keyframes wobble{0%,100%{transform:rotate(-2deg) scale(1)}50%{transform:rotate(2deg) scale(1.05)}}
 .bravo.calm,.bravo.calm .bravobox{animation:none}
 @media (prefers-reduced-motion:reduce){.bravo.big,.bravo.big .bravobox{animation:none}}
+.durs{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.durs button{border:2px solid var(--ink);background:var(--cell);padding:8px 4px;display:flex;flex-direction:column;align-items:center;gap:1px}
+.durs button b{font-family:var(--mono);font-size:1.15rem}
+.durs button span{font-size:.72rem;color:var(--muted)}
+.durs button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.durs button[aria-pressed="true"] span{color:var(--paper);opacity:.8}
+.durs .dmini{grid-column:1/-1;flex-direction:row;justify-content:flex-start;gap:10px;padding:8px 10px}
+.durs .dother{grid-column:span 1;display:flex;flex-direction:column;align-items:center;justify-content:center;border:2px dashed var(--muted);padding:2px 4px;font-size:.72rem;color:var(--muted)}
+.durs .dother .input{border:0;padding:2px;text-align:center;font-family:var(--mono);font-size:1rem;background:transparent;width:100%}
+.tasks li{gap:8px;padding-right:0}
+.tasks .tt{flex:1;min-width:0;cursor:text;padding:2px 0}
+.tasks .drag{flex:none;width:42px;align-self:stretch;display:grid;place-items:center;font-size:1.2rem;color:var(--muted);cursor:grab;touch-action:none;border-left:1px solid var(--line);user-select:none}
+.tasks li.dragging{background:var(--hl);box-shadow:0 4px 0 var(--ink);position:relative;z-index:2}
+.tasks li.done .tt{color:var(--muted);text-decoration:line-through}
+.tedit{flex:1;min-width:0;padding:6px 8px;font-size:1rem}
+.tdur{font-family:var(--mono);font-size:.78rem;font-weight:600;background:var(--head);border:1px solid var(--line);padding:0 4px;white-space:nowrap}
+.tadm{font-size:.72rem;font-weight:700;background:var(--ink);color:var(--paper);padding:0 5px;text-transform:uppercase;letter-spacing:.05em}
+.tfilt{margin-bottom:2px}
+textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;display:block;min-height:38px}
+.tg.col,.tchip.col{display:inline-flex;align-items:center;gap:5px}
+.tg.col::before,.tchip.col::before{content:"";width:9px;height:9px;background:var(--tc);flex:none;border:1px solid rgba(0,0,0,.25)}
+.cdots{display:flex;gap:8px;flex-wrap:wrap}
+.cdot{width:30px;height:30px;border:2px solid var(--ink);background:var(--sw);padding:0}
+.cdot[aria-pressed="true"]{box-shadow:inset 0 0 0 3px var(--cell);outline:2px solid var(--ink)}
+.tcolors{display:flex;gap:4px;flex-wrap:wrap;width:100%;padding:4px 0 2px}
+.tcol{width:24px;height:24px;border:1px solid var(--line);background:var(--sw);padding:0}
+.tcol.none{background:linear-gradient(135deg,transparent 45%,var(--neg) 45%,var(--neg) 55%,transparent 55%),var(--cell)}
+.tcol[aria-pressed="true"]{outline:2px solid var(--ink);outline-offset:1px}
 .danger{border:2px solid var(--neg);background:var(--cell);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 
 /* Cases de la semaine */
@@ -637,12 +665,16 @@ function ink(hex){const h=hex.replace('#',''); const r=parseInt(h.slice(0,2),16)
 const pv=p=>`--pc:${p.color};--pt:${ink(p.color)}`;
 const P=id=>S.projects.find(p=>p.id===id);
 const T=id=>S.tags.find(t=>t.id===id);
-const isDay=p=>SIZES[p.size].unit==='day';
-const small=p=>p.size==='h4';
 const isMini=p=>p&&p.size==='mini';
+const DUR_OPTS=[1,2,3,5,10,20];
+const durOf=p=>isMini(p)?0:(p.dur||5);
+const fmtDur=d=>String(d).replace('.',',')+' j';
+const durLbl=p=>isMini(p)?'Mini':fmtDur(durOf(p));
+const small=p=>!isMini(p)&&durOf(p)<=1;
+const isDay=p=>!isMini(p)&&durOf(p)<5; /* placement proposé par défaut : par jours sous 5 jours */
 const MINI_COLOR='#E2DFD3';
 function newMini(name,id,done){ const p={id:id||'p'+Date.now(),emoji:'',color:MINI_COLOR,name,size:'mini',imp:2,due:null,tags:[],weeks:[],days:[],why:'',next:'',folder:null,tasks:[]}; if(done) p.closed=todayS; return p; }
-const pWeeks=p=>isDay(p)?[...new Set(p.days.map(d=>wkKey(parse(d))))].sort():p.weeks.slice().sort();
+const pWeeks=p=>[...new Set([...(p.weeks||[]),...(p.days||[]).map(d=>wkKey(parse(d)))])].sort();
 const open=()=>S.projects.filter(p=>!p.closed);
 function state(p){ if(p.closed) return 'fini'; const w=pWeeks(p); if(w.includes(CUR)) return 'cours'; if(w.includes(wkAdd(CUR,1))) return 'proch'; if(w.some(x=>x>CUR)) return 'plan'; return 'attente'; }
 function inWeek(k){const ps=open().filter(p=>pWeeks(p).includes(k)); return {n:ps.filter(p=>!small(p)),s:ps.filter(small)};}
@@ -652,14 +684,17 @@ const QUADS=[['Important et urgent','#D9452E'],['Important','#E3A21A'],['Urgent'
 function prioSort(a,b){return quad(a)-quad(b)||b.imp-a.imp||(a.due||'9').localeCompare(b.due||'9');}
 const starsHtml=n=>`<span class="stars" aria-label="${IMP[n]}">${'★'.repeat(n)}<span class="off">${'★'.repeat(3-n)}</span></span>`;
 const urgHtml=p=>urgent(p)?`<span class="urg">${days(p.due)<0?'EN RETARD':'URGENT'}</span>`:'';
-const tagsHtml=p=>p.tags.map(T).filter(Boolean).map(t=>`<span class="tg">${esc(t.name)}</span>`).join(' ');
+const TAG_COLORS=['#E0574F','#F0A35E','#F5CF4E','#5BAE5B','#3FB6C8','#4A86D9','#9A6BD1','#F07F9E','#A2703F','#5E6B7A'];
+const tcs=t=>t.color?` style="--tc:${t.color}"`:'';
+const tagsHtml=p=>p.tags.map(T).filter(Boolean).map(t=>`<span class="tg${t.color?' col':''}"${tcs(t)}>${esc(t.name)}</span>`).join(' ');
+function tagMatch(p){ const g={}; ui.tagSel.forEach(id=>{ const t=T(id); if(!t) return; const c=t.color||'_'; (g[c]=g[c]||[]).push(id); }); return Object.values(g).every(ids=>ids.some(id=>p.tags.includes(id))); }
 function hoursOf(id,k){const [a,b]=k?wkDates(k):['0000','9999']; let h=0; S.entries.forEach(e=>{if(e.pid===id&&e.k==='h'&&e.date>=a&&e.date<=b) h+=e.v;}); return h;}
 function money(id){let dep=0,rec=0; S.entries.forEach(e=>{if(e.pid!==id)return; if(e.k==='dep') dep+=e.v; else if(e.k==='rec') rec+=e.v;}); return {dep,rec};}
 const folderPath=p=>p.closed?'~/Projets/_Archives/'+p.closed.slice(0,4)+'/'+p.folder:'~/Projets/'+p.folder;
 const tagPv=()=>'--pc:var(--cell);--pt:var(--ink)';
 
 const VIEWS=['projets','planning','vrac'];
-const ui={view:'projets',wk:CUR,filter:'ouverts',sort:'prio',tag:null,kind:'h',pid:null,amount:'',note:'',date:null,planMore:0,planStart:null};
+const ui={view:'projets',wk:CUR,filter:'ouverts',sort:'prio',tag:null,tagSel:[],taskAdmin:false,kind:'h',pid:null,amount:'',note:'',date:null,planMore:0,planStart:null};
 try{const h=(location.hash||'').slice(1); if(VIEWS.includes(h)) ui.view=h;}catch(e){}
 
 const $view=document.getElementById('view');
@@ -674,7 +709,7 @@ function render(){
 function minisSheet(showDone){
   sheetId=null; ctx=null;
   const all=S.projects.filter(isMini), list=all.filter(p=>showDone?!!p.closed:!p.closed).sort(showDone?(a,b)=>String(b.closed).localeCompare(String(a.closed)):prioSort);
-  openSheet(`<div class="shead"><h2>Mini projets<small>moins de 4 h · ${list.length} ${showDone?'terminé'+(list.length>1?'s':''):'en cours'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+  openSheet(`<div class="shead"><h2>Mini projets<small>moins d'1 jour · ${list.length} ${showDone?'terminé'+(list.length>1?'s':''):'en cours'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
   ${showDone?'':`<form class="inline vadd" style="margin:0" data-act="addMini"><input class="input" id="f-mini" placeholder="Nouveau mini projet…" autocomplete="off" aria-label="Nouveau mini projet"><button class="btn" type="submit">+</button></form>`}
   <ul class="mlist">${list.map(p=>{const n=p.tasks.length, d=p.tasks.filter(x=>x.d).length; return `<li>${showDone?'':`<input type="checkbox" class="vchk" data-act="miniChk" data-id="${p.id}" aria-label="Terminé : ${esc(p.name)}">`}<button class="mt" data-act="open" data-id="${p.id}"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}${n?`<span>${d}/${n} étape${n>1?'s':''}</span>`:''}${p.due?`<span>⏱ ${fmt(p.due)}</span>`:''}${p.notes&&p.notes.some(x=>x.t)?'<span>notes</span>':''}${showDone?`<span>fait le ${fmt(p.closed)}</span>`:urgHtml(p)}</span></button></li>`;}).join('')||`<li class="empty">${showDone?'Aucun mini projet terminé.':'Aucun mini projet en cours.'}</li>`}</ul>
   <button class="linkbtn" style="align-self:center" data-act="${showDone?'minis':'minisDone'}">${showDone?'‹ Mini projets en cours':'Voir les mini projets terminés'}</button></div>`,'minis'+(showDone?'d':''));
@@ -683,14 +718,12 @@ function detailMini(p,msg){
   const closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, hasNotes=p.notes&&p.notes.some(x=>x.t);
   openSheet(`<div class="shead" style="--pc:${MINI_COLOR};--pt:#1E1E1E"><h2>${esc(p.name)}<small>Mini projet${closed?' · terminé le '+fmt(p.closed):''}</small></h2><button class="xbtn" data-act="minis">‹ Liste</button></div><div class="sbody">
   ${closed?'':`<div class="field"><label for="f-mname">Nom</label><input class="input" id="f-mname" data-field="name" value="${esc(p.name)}"></div>`}
-  <div class="field"><span class="lbl">Étapes ${n?d+'/'+n:''}</span>
-    ${n?`<ul class="list">${p.tasks.map((x,i)=>`<li class="${x.d?'done':''}"><input type="checkbox" id="tk-${i}" data-act="task" data-i="${i}" ${x.d?'checked':''} ${closed?'disabled':''}><label class="t" for="tk-${i}">${esc(x.t)}</label></li>`).join('')}</ul>`:''}
-    ${closed?'':`<form class="inline" data-act="addTask"><input class="input" id="f-task" placeholder="Nouvelle étape" aria-label="Nouvelle étape"><button class="btn" type="submit">+</button></form>`}</div>
+  ${tasksBlock(p,closed,'étape')}
   ${closed?'':`<div class="field"><span class="lbl">Importance</span>${starPick(p.imp,'imp')}</div>
   <div class="field"><label for="f-due">Échéance</label><div class="duerow"><input class="input" type="date" id="f-due" data-field="due" value="${p.due||''}"><button data-act="clearDue">Aucune</button></div><p class="duehint">${dueHint(p.due)}</p></div>`}
   <div class="field"><span class="lbl">Notes</span>${hasNotes?`<button class="notesprev" data-act="notes">${p.notes.filter(x=>x.t).slice(0,3).map(x=>`<span style="padding-left:${x.l*14}px">• ${esc(x.t)}</span>`).join('')}<b>Ouvrir les notes</b></button>`:`<button class="btn ghost" data-act="notes">+ Notes</button>`}</div>
-  ${closed?`<button class="btn ghost" data-act="reopen">Remettre en cours</button>`:`<button class="btn" data-act="miniDone">✓ Terminé</button>`}
-  ${closed?'':`<details class="more"><summary>En faire un projet plus grand</summary><div class="field"><span class="lbl">Durée</span>${sizePick(p.size,'size')}</div><p class="note" style="margin:0">Choisir une autre durée le transforme en projet complet, avec émoji, couleur et planning.</p></details>`}
+  ${closed?`<button class="btn ghost" data-act="reopen">Remettre en cours</button>`:`<div class="actions"><button class="btn ghost" data-act="miniSave">Valider</button><button class="btn" data-act="miniDone">Clôturer le projet</button></div>`}
+  ${closed?'':`<details class="more"><summary>En faire un projet plus grand</summary><div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(true,null,'dur')}</div><p class="note" style="margin:0">Choisir une autre durée le transforme en projet complet, avec émoji, couleur et planning.</p></details>`}
   ${msg==='del'?`<div class="danger"><div>Supprimer <b>${esc(p.name)}</b> définitivement ?</div><div class="actions"><button class="btn ghost" data-act="back">Annuler</button><button class="btn warn" data-act="delOk">Supprimer</button></div></div>`:`<button class="linkbtn" style="align-self:center;color:var(--neg)" data-act="delAsk">Supprimer</button>`}
   </div>`,'d:'+p.id);
 }
@@ -726,7 +759,7 @@ function slotCard(p,k){
   if(p.due) m.push(`<span>⏱ ${fmt(p.due)}</span>`);
   m.push(urgHtml(p));
   return `<button class="slot" style="${pv(p)}" data-act="open" data-id="${p.id}">
-   <div class="band"><span class="emo">${p.emoji}</span><span class="nm">${esc(p.name)}</span><span style="font-family:var(--mono);font-size:.74rem;font-weight:600">${SIZES[p.size].l}</span></div>
+   <div class="band"><span class="emo">${p.emoji}</span><span class="nm">${esc(p.name)}</span><span style="font-family:var(--mono);font-size:.74rem;font-weight:600">${durLbl(p)}</span></div>
    ${n?`<div class="prog"><i style="width:${Math.round(d/n*100)}%"></i></div>`:''}
    <div class="pbody">${p.next?`<p>${esc(p.next)}</p>`:''}<div class="meta">${m.join('')}</div></div></button>`;
 }
@@ -773,8 +806,8 @@ function vPlanning(){
   /* lignes : chaque projet garde une seule ligne, rangé le plus haut possible ; un autre projet peut se glisser dans ses trous */
   const items=open().map(p=>{
     const cov=new Set();
-    if(isDay(p)) p.days.forEach(d=>{const i=idx(d); if(i>=0) cov.add(i);});
-    else p.weeks.forEach(k=>{const i=idx(iso(wkMon(k))); if(i>=0) for(let j=0;j<7;j++) cov.add(i+j);});
+    (p.days||[]).forEach(d=>{const i=idx(d); if(i>=0) cov.add(i);});
+    (p.weeks||[]).forEach(k=>{const i=idx(iso(wkMon(k))); if(i>=0) for(let j=0;j<5;j++) cov.add(i+j);});
     const ix=[...cov].sort((x,y)=>x-y), segs=[];
     ix.forEach(i=>{const g=segs[segs.length-1]; if(g&&g[1]===i-1) g[1]=i; else segs.push([i,i]);});
     return {p,ix,segs,start:ix[0],len:ix.length};
@@ -813,10 +846,10 @@ function vProjets(){
   const order={cours:0,proch:1,plan:2,attente:3,fini:4};
   let rows=S.projects.filter(p=>ui.filter==='fini'?!!p.closed:ui.filter==='attente'?(!isMini(p)&&!p.closed&&state(p)==='attente'):(!isMini(p)&&!p.closed));
   const mOpen=S.projects.filter(p=>isMini(p)&&!p.closed), mBest=mOpen.slice().sort(prioSort)[0];
-  if(ui.tag) rows=rows.filter(p=>p.tags.includes(ui.tag));
+  if(ui.tagSel.length) rows=rows.filter(tagMatch);
   const prio=ui.sort==='prio';
   rows.sort(prio?prioSort:(x,y)=>order[state(x)]-order[state(y)]||prioSort(x,y));
-  if(ui.filter==='ouverts'&&!ui.tag&&mBest){ const g={__g:true,id:'__minis',imp:mBest.imp,due:mBest.due,size:'mini',tags:[],weeks:[],days:[]}; if(prio){ rows.push(g); rows.sort(prioSort); } else rows.unshift(g); }
+  if(ui.filter==='ouverts'&&!ui.tagSel.length&&mBest){ const g={__g:true,id:'__minis',imp:mBest.imp,due:mBest.due,size:'mini',tags:[],weeks:[],days:[]}; if(prio){ rows.push(g); rows.sort(prioSort); } else rows.unshift(g); }
   const F=[['ouverts','En cours et à venir'],['attente','Non planifiés'],['fini','Terminés']];
   let lastQ=-1;
   $view.innerHTML=`<div class="ctrl"><div class="seg"><button data-act="sort" data-s="prio" aria-pressed="${prio}">Par priorité</button><button data-act="sort" data-s="etat" aria-pressed="${!prio}">Par état</button></div>
@@ -825,8 +858,11 @@ function vProjets(){
   <tbody>${rows.map(p=>{let pre=''; if(prio&&quad(p)!==lastQ){lastQ=quad(p); pre=`<tr class="qrow"><td colspan="6"><span class="quad"><i style="background:${QUADS[lastQ][1]}"></i>${QUADS[lastQ][0]}</span></td></tr>`;}
    if(p.__g){ const nu=mOpen.filter(urgent).length, fd=mOpen.map(x=>x.due).filter(Boolean).sort()[0]; return pre+`<tr data-act="minis" class="mgrp" style="--pc:${MINI_COLOR};--pt:#1E1E1E"><td class="pcell"><div class="in"><span class="sw" style="font-family:var(--mono);font-size:.8rem;font-weight:600">(${mOpen.length})</span><span class="nm"><span>Mini projets</span></span></div></td><td class="st">Liste</td><td>${starsHtml(mBest.imp)}</td><td>${fd?fmt(fd)+' '+parse(fd).getFullYear():''} ${nu?`<span class="urg">${nu} URGENT</span>`:''}</td><td style="font-family:var(--mono)">Mini</td><td></td></tr>`; }
    const st=state(p);
-   return pre+`<tr data-act="open" data-id="${p.id}" style="${pv(p)}"><td class="pcell"><div class="in"><span class="sw">${p.emoji}</span><span class="nm"><span>${esc(p.name)}</span></span></div></td><td class="st st-${st}">${STATE[st]}</td><td>${starsHtml(p.imp)}</td><td>${p.due?fmt(p.due)+' '+parse(p.due).getFullYear():''} ${urgHtml(p)}</td><td style="font-family:var(--mono)">${SIZES[p.size].l}</td><td>${tagsHtml(p)}</td></tr>`}).join('')||'<tr class="qrow"><td class="empty" colspan="6"><span class="quad">Aucun projet ici.</span></td></tr>'}</tbody></table></div>
-  ${S.tags.length?`<div class="tagfilter"><span class="lbl">Filtrer par tag</span><div class="pchips">${S.tags.map(t=>`<button class="tchip" data-act="tagf" data-t="${t.id}" aria-pressed="${ui.tag===t.id}">${esc(t.name)}</button>`).join('')}</div></div>`:''}
+   return pre+`<tr data-act="open" data-id="${p.id}" style="${pv(p)}"><td class="pcell"><div class="in"><span class="sw">${p.emoji}</span><span class="nm"><span>${esc(p.name)}</span></span></div></td><td class="st st-${st}">${STATE[st]}</td><td>${starsHtml(p.imp)}</td><td>${p.due?fmt(p.due)+' '+parse(p.due).getFullYear():''} ${urgHtml(p)}</td><td style="font-family:var(--mono)">${durLbl(p)}</td><td>${tagsHtml(p)}</td></tr>`}).join('')||'<tr class="qrow"><td class="empty" colspan="6"><span class="quad">Aucun projet ici.</span></td></tr>'}</tbody></table></div>
+  ${S.tags.length?(()=>{ const cols=[...new Set(S.tags.map(t=>t.color).filter(Boolean))]; return `<div class="tagfilter"><span class="lbl">Filtrer par tag</span>
+   ${cols.length?`<div class="cdots">${cols.map(c=>{ const ids=S.tags.filter(t=>t.color===c).map(t=>t.id), on=ids.every(id=>ui.tagSel.includes(id)); return `<button class="cdot" style="--sw:${c}" data-act="colf" data-c="${c}" aria-pressed="${on}" aria-label="Tous les tags de cette couleur"></button>`; }).join('')}</div>`:''}
+   <div class="pchips">${S.tags.map(t=>`<button class="tchip${t.color?' col':''}"${tcs(t)} data-act="tagf" data-t="${t.id}" aria-pressed="${ui.tagSel.includes(t.id)}">${esc(t.name)}</button>`).join('')}</div>
+   ${ui.tagSel.length?`<p class="note" style="margin:0">Même couleur : l'un ou l'autre. Couleurs différentes : les deux à la fois. <button class="linkbtn" data-act="tagClear">Effacer les filtres</button></p>`:''}</div>`; })():''}
   <button class="btn ghost" style="margin-top:10px" data-act="tags">Gérer les tags</button>
   <p class="note">« Par priorité » range les projets comme la matrice d'Eisenhower : importance selon tes étoiles, urgence quand l'échéance est à moins de ${URG/7} semaines.</p>`;
 }
@@ -859,7 +895,7 @@ function itemSheet(src,vid,mode){
     <div class="opts">
      ${opt('itemStep','🧩','Étape d\'un projet','Ajoutée aux tâches du projet choisi')}
      ${opt('itemProj','✨','Transformer en projet','Création rapide, le nom est déjà rempli')}
-     ${opt('itemMini','📝','Mini projet','Moins de 4 h : ajouté à la liste des mini projets')}
+     ${opt('itemMini','📝','Mini projet','Moins d\'1 jour : ajouté à la liste des mini projets')}
      ${src!=='autre'?opt('itemTo',LISTS.autre.emoji,LISTS.autre.name,LISTS.autre.hint,'data-to="autre"'):''}
      ${src!=='inbox'?opt('itemTo','📥','Remettre en vrac','À trier plus tard','data-to="inbox"'):''}
     </div>
@@ -873,7 +909,7 @@ function takeItem(){const arr=itemArr(ctx.src), i=arr.findIndex(x=>x.id===ctx.vi
 function weekSheet(k,msg){
   sheetId=null; ctx={k,week:true};
   const c=inWeek(k), ord=weekOrder(k,c.n), [a,b]=wkDates(k);
-  const row=p=>`<li><button class="pickbtn" style="${pv(p)}" data-act="open" data-id="${p.id}"><span class="sw">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}<span>${SIZES[p.size].l}</span>${isDay(p)?'<span>'+p.days.filter(x=>x>=a&&x<=b).sort().map(dayLbl).join(' · ')+'</span>':''}${urgHtml(p)}</span></span></button><button class="wrm" data-act="rmWkS" data-id="${p.id}">Retirer</button></li>`;
+  const row=p=>`<li><button class="pickbtn" style="${pv(p)}" data-act="open" data-id="${p.id}"><span class="sw">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}<span>${durLbl(p)}</span>${p.weeks.includes(k)?'<span>lun–ven</span>':'<span>'+p.days.filter(x=>x>=a&&x<=b).sort().map(dayLbl).join(' · ')+'</span>'}${urgHtml(p)}</span></span></button><button class="wrm" data-act="rmWkS" data-id="${p.id}">Retirer</button></li>`;
   let n=ord.map(row).join(''); for(let i=c.n.length;i<MAXN;i++) n+=`<li><button class="slot free" data-act="fill" data-size="n" data-k="${k}"><span class="n">${i+1}</span>Choisir un projet</button></li>`;
   let sm=c.s.map(row).join(''); for(let i=c.s.length;i<MAXS;i++) sm+=`<li><button class="slot free" data-act="fill" data-size="s" data-k="${k}"><span class="n">+</span>Petit projet (+4 h)</button></li>`;
   openSheet(`<div class="shead"><h2>Semaine ${wkNum(k)}<small>${wkRange(k)}${k===CUR?' · cette semaine':''}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
@@ -927,22 +963,37 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$scrim.hidden) clo
 function canAdd(p,k){const c=inWeek(k); if(pWeeks(p).includes(k)) return true; return small(p)?c.s.length<MAXS:c.n.length<MAXN;}
 function fullMsg(p,k){const c=inWeek(k), list=small(p)?c.s:c.n;
   return `<div class="alert"><div>La semaine ${wkNum(k)} a déjà ${small(p)?MAXS+' petits projets':MAXN+' projets'}. Lequel laisse sa place à <b>${p.emoji} ${esc(p.name)}</b> ?</div><div class="pchips">${list.map(a=>`<button class="pchip" style="${pv(a)}" data-act="swapWk" data-out="${a.id}" data-in="${p.id}" data-k="${k}">${a.emoji} ${esc(a.name)}</button>`).join('')}</div></div>`;}
-function removeFromWeek(p,k){ if(isDay(p)){const [a,b]=wkDates(k); p.days=p.days.filter(d=>d<a||d>b);} else p.weeks=p.weeks.filter(w=>w!==k); }
+function removeFromWeek(p,k){ const [a,b]=wkDates(k); p.days=p.days.filter(d=>d<a||d>b); p.weeks=p.weeks.filter(w=>w!==k); }
 
 function starPick(cur,act){return `<div class="starpick">${[1,2,3].map(n=>`<button data-act="${act}" data-n="${n}" class="${n<=cur?'on':''}" aria-label="${IMP[n]}">★</button>`).join('')}<span class="cap">${IMP[cur]}</span></div>`;}
+const TASK_DUR=/\((\d+(?:[.,]\d+)?)\s*(min|h|j)\)/i;
+function parseTask(t){ const m=String(t).match(TASK_DUR); let mins=null; if(m){ const v=parseFloat(m[1].replace(',','.')), u=m[2].toLowerCase(); mins=u==='min'?v:u==='h'?v*60:v*480; } return {mins, admin:/(^|\s)@admin\b/i.test(t)}; }
+function fmtMins(m){ if(!m) return ''; if(m>=480&&m%480===0) return (m/480)+' j'; const h=Math.floor(m/60), r=Math.round(m%60); return h?(h+' h'+(r?' '+String(r).padStart(2,'0'):'')):r+' min'; }
+function taskText(t){ return esc(t).replace(/\((\d+(?:[.,]\d+)?)\s*(min|h|j)\)/ig,'<span class="tdur">$1 $2</span>').replace(/(^|\s)@admin\b/ig,'$1<span class="tadm">admin</span>'); }
+function tasksBlock(p,closed,word){
+  const all=p.tasks.map((x,i)=>({x,i})), adminN=all.filter(o=>parseTask(o.x.t).admin).length, only=!!(ui.taskAdmin&&adminN);
+  const list=only?all.filter(o=>parseTask(o.x.t).admin):all, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length;
+  const rest=all.filter(o=>!o.x.d).reduce((a,o)=>a+(parseTask(o.x.t).mins||0),0);
+  return `<div class="field"><span class="lbl">${word==='étape'?'Étapes':'Tâches'} ${n?d+'/'+n:''}${rest?' · reste ≈ '+fmtMins(rest):''}</span>
+   ${adminN?`<div class="seg tfilt"><button data-act="tfilt" data-v="0" aria-pressed="${!only}">Toutes</button><button data-act="tfilt" data-v="1" aria-pressed="${only}">Admin (${adminN})</button></div>`:''}
+   ${list.length?`<ul class="list tasks" data-pid="${p.id}">${list.map(({x,i})=>`<li class="${x.d?'done':''}" data-i="${i}"><input type="checkbox" data-act="task" data-i="${i}" ${x.d?'checked':''} ${closed?'disabled':''} aria-label="Valider la ${word}"><span class="t tt" data-act="tedit" data-i="${i}">${taskText(x.t)}</span>${closed||only?'':'<span class="drag" aria-label="Glisser pour déplacer">≡</span>'}</li>`).join('')}</ul>`:''}
+   ${closed?'':`<form class="inline" data-act="addTask"><input class="input" id="f-task" placeholder="Nouvelle ${word}" aria-label="Nouvelle ${word}"><button class="btn" type="submit">+</button></form><p class="note" style="margin:0">Durée entre parenthèses : (30min), (2h), (1j) — 1j compte 8 h. Ajoute @admin pour une tâche administrative.</p>`}</div>`;
+}
+function durPick(isM,dur,act){ return `<div class="durs"><button class="dmini" data-act="${act}" data-v="mini" aria-pressed="${isM}"><b>Mini</b><span>moins d'1 jour · liste à part</span></button>${DUR_OPTS.map(v=>`<button data-act="${act}" data-v="${v}" aria-pressed="${!isM&&dur===v}"><b>${v}</b><span>jour${v>1?'s':''}</span></button>`).join('')}<label class="dother"><span>Autre</span><input class="input" type="number" min="0.5" step="0.5" inputmode="decimal" data-durother="${act}" value="${!isM&&dur!=null&&!DUR_OPTS.includes(dur)?dur:''}" aria-label="Autre durée en jours" placeholder="j"></label></div>`; }
+function applyDur(p,v){ if(v==='mini'){ p.size='mini'; p.dur=null; p.emoji=''; p.color=MINI_COLOR; p.weeks=[]; p.days=[]; return; } const n=Number(v); if(!(n>0)) return; if(isMini(p)){ if(!p.emoji) p.emoji='✨'; if(p.color===MINI_COLOR) p.color=COLORS[Math.floor(Math.random()*COLORS.length)]; } p.size='proj'; p.dur=n; }
 function sizePick(cur,act){return `<div class="sizes">${Object.entries(SIZES).map(([k,s])=>`<button data-act="${act}" data-s="${k}" aria-pressed="${cur===k}"><b>${s.l}</b><span>${s.sub}</span></button>`).join('')}</div>`;}
-function tagPick(sel,act){return `<div class="pchips">${S.tags.map(t=>`<button class="tchip" data-act="${act}" data-t="${t.id}" aria-pressed="${sel.includes(t.id)}">${esc(t.name)}</button>`).join('')}</div>
+function tagPick(sel,act){return `<div class="pchips">${S.tags.map(t=>`<button class="tchip${t.color?' col':''}"${tcs(t)} data-act="${act}" data-t="${t.id}" aria-pressed="${sel.includes(t.id)}">${esc(t.name)}</button>`).join('')}</div>
   <form class="inline" data-act="newTag" data-for="${act}"><input class="input" id="f-tag" placeholder="Nouveau tag" aria-label="Nouveau tag" maxlength="20"><button class="btn" type="submit">+</button></form>`;}
 function dueHint(due){ if(!due) return 'Pas d\'échéance, pas d\'urgence.'; const n=days(due); return n<0?'Échéance dépassée : urgent.':n<=URG?'À '+n+' jours : compté comme urgent.':'À '+n+' jours : pas encore urgent.'; }
 
 /* Création express */
 function newSheet(keep){
-  if(!keep||!draft) draft={name:'',emoji:'✨',picked:false,color:COLORS[Math.floor(Math.random()*COLORS.length)],size:'w1',imp:2,due:'',tags:[],why:''};
-  if(ctx&&ctx.size==='s'&&!keep) draft.size='h4';
+  if(!keep||!draft) draft={name:'',emoji:'✨',picked:false,color:COLORS[Math.floor(Math.random()*COLORS.length)],size:'proj',dur:5,imp:2,due:'',tags:[],why:''};
+  if(ctx&&ctx.size==='s'&&!keep) draft.dur=1;
   const d=draft;
   openSheet(`<div class="shead"><h2>Nouveau projet<small>${ctx?'pour la semaine '+wkNum(ctx.k):'il ira dans « À planifier »'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
    <div class="namerow" style="--pc:${d.color}">${d.size==='mini'?'':`<button class="emobtn" data-act="emojiPick" data-for="new" aria-label="Choisir un émoji" id="nemo">${d.emoji}</button>`}<input class="input" id="n-name" placeholder="Ex. Monter le tunnel de semis" value="${esc(d.name)}" aria-label="Nom du projet"></div>
-   <div class="field"><span class="lbl">Durée</span>${sizePick(d.size,'nsize')}</div>
+   <div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(d.size==='mini',d.dur,'ndur')}</div>
    <div class="field"><span class="lbl">Importance</span>${starPick(d.imp,'nimp')}</div>
    <div class="field"><label for="n-due">Échéance (facultatif)</label><div class="duerow"><input class="input" type="date" id="n-due" value="${d.due}"><button data-act="nodue">Aucune</button></div><p class="duehint" id="n-duehint">${dueHint(d.due)}</p></div>
    ${d.size==='mini'?'':`<div class="field"><span class="lbl">Tags</span>${tagPick(d.tags,'ntag')}</div>
@@ -968,29 +1019,28 @@ function emojiSheet(forWhat){
 function emojiDone(e){ if(emojiFor==='new'){ if(e){draft.emoji=e; draft.picked=true;} newSheet(true);} else { const p=P(emojiFor); if(e){p.emoji=e; save();} detail(p.id);} }
 
 /* Fiche projet */
+let lastDetail=null;
 function detail(id,msg){
-  const p=P(id); if(!p) return; sheetId=id; ctx=null; draft=null;
+  const p=P(id); if(!p) return; if(lastDetail!==id){ ui.taskAdmin=false; lastDetail=id; } sheetId=id; ctx=null; draft=null; placeMode=null;
   if(isMini(p)){ detailMini(p,msg); return; }
-  const st=state(p), closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, mo=money(id), h=hoursOf(id), sz=SIZES[p.size];
-  const placed=isDay(p)?p.days.slice().sort().map(x=>({k:x,l:dayLbl(x)+' '+MOIS[parse(x).getMonth()],w:wkKey(parse(x))})):pWeeks(p).map(w=>({k:w,l:'S'+wkNum(w)+' · '+wkRange(w),w}));
-  openSheet(`<div class="shead" style="${pv(p)}"><button class="emo" data-act="emojiPick" data-for="${p.id}" aria-label="Changer l'émoji">${p.emoji}</button><h2>${esc(p.name)}<small>${sz.l} · ${IMP[p.imp]}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+  const st=state(p), closed=!!p.closed, n=p.tasks.length, d=p.tasks.filter(x=>x.d).length, mo=money(id), h=hoursOf(id);
+  const placed=[...p.weeks.map(w=>({k:w,l:'S'+wkNum(w)+' · lun–ven '+wkRange(w).split(' – ')[0],w,o:iso(wkMon(w))})),...p.days.map(x=>({k:x,l:dayLbl(x)+' '+MOIS[parse(x).getMonth()],w:wkKey(parse(x)),o:x}))].sort((u,v)=>u.o.localeCompare(v.o));
+  openSheet(`<div class="shead" style="${pv(p)}"><button class="emo" data-act="emojiPick" data-for="${p.id}" aria-label="Changer l'émoji">${p.emoji}</button><h2>${esc(p.name)}<small>${durLbl(p)} · ${IMP[p.imp]}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
   <div><span class="state st-${st}">${STATE[st]}</span>${urgHtml(p)} ${tagsHtml(p)}</div>
   ${closed?`<div class="bilan"><span class="lbl">Clôturé le ${fmt(p.closed)}</span>${p.bilan&&p.bilan.learn?`<p><b>Ce que j'en retire.</b> ${esc(p.bilan.learn)}</p>`:''}${p.bilan&&p.bilan.diff?`<p><b>À refaire autrement.</b> ${esc(p.bilan.diff)}</p>`:''}${!(p.bilan&&(p.bilan.learn||p.bilan.diff))?'<p>Pas de bilan noté.</p>':''}</div>`:''}
   ${msg&&msg!=='del'?msg:''}
-  <div class="field"><span class="lbl">${sz.unit==='day'?'Jours placés':'Semaines placées'} · ${placed.length}</span>
+  <div class="field"><span class="lbl">Placement · ${placed.length}</span>
     ${placed.length?`<ul class="list">${placed.map(x=>`<li><span class="t" style="font-family:var(--mono);font-size:.88rem">${x.l}${x.w===CUR?' <span class="state" style="background:var(--hl);font-size:.7rem;padding:1px 5px">cette sem.</span>':''}</span>${closed?'':`<button class="x" data-act="unplace" data-k="${x.k}" aria-label="Retirer">×</button>`}</li>`).join('')}</ul>`:'<p class="note" style="margin:0">Pas encore placé.</p>'}
-    ${closed?'':`<button class="btn ghost" data-act="place">${sz.unit==='day'?'Placer sur des jours':'Placer dans des semaines'}</button>`}
-    ${p.size==='m1'&&!closed?'<p class="note" style="margin:0">Projet d\'un mois ou plus : note ses grandes étapes dans les tâches.</p>':''}</div>
+    ${closed?'':`<div class="actions"><button class="btn ghost" data-act="place" data-m="j">Par jours</button><button class="btn ghost" data-act="place" data-m="s">Par semaines</button></div>`}
+    ${durOf(p)>=20&&!closed?'<p class="note" style="margin:0">Projet d\'un mois ou plus : note ses grandes étapes dans les tâches.</p>':''}</div>
   ${closed?'':`<div class="field"><label for="f-next">Prochaine action</label><input class="input" id="f-next" data-field="next" value="${esc(p.next)}" placeholder="Le prochain geste concret"></div>
-  <div class="field"><span class="lbl">Durée</span>${sizePick(p.size,'size')}</div>
+  <div class="field"><span class="lbl">Durée (jours de travail)</span>${durPick(false,p.dur,'dur')}</div>
   <div class="field"><span class="lbl">Importance</span>${starPick(p.imp,'imp')}</div>
   <div class="field"><label for="f-due">Échéance</label><div class="duerow"><input class="input" type="date" id="f-due" data-field="due" value="${p.due||''}"><button data-act="clearDue">Aucune</button></div><p class="duehint">${dueHint(p.due)}</p></div>
   <div class="field"><span class="lbl">Tags</span>${tagPick(p.tags,'tag')}</div>`}
+  ${tasksBlock(p,closed,'tâche')}
   <div class="field"><span class="lbl">Notes</span>${p.notes&&p.notes.some(x=>x.t)?`<button class="notesprev" data-act="notes">${p.notes.filter(x=>x.t).slice(0,3).map(x=>`<span style="padding-left:${x.l*14}px">• ${esc(x.t)}</span>`).join('')}<b>Ouvrir les notes · ${p.notes.filter(x=>x.t).length} ligne${p.notes.filter(x=>x.t).length>1?'s':''}</b></button>`:`<button class="btn ghost" data-act="notes">+ Feuille de notes</button>`}</div>
-  <details class="more" ${n||p.why?'open':''}><summary>Tâches, pourquoi, dossier, couleur</summary>
-  <div class="field"><span class="lbl">Tâches ${n?d+'/'+n:''}</span>
-    ${n?`<ul class="list">${p.tasks.map((x,i)=>`<li class="${x.d?'done':''}"><input type="checkbox" id="tk-${i}" data-act="task" data-i="${i}" ${x.d?'checked':''} ${closed?'disabled':''}><label class="t" for="tk-${i}">${esc(x.t)}</label></li>`).join('')}</ul>`:''}
-    ${closed?'':`<form class="inline" data-act="addTask"><input class="input" id="f-task" placeholder="Nouvelle tâche ou étape" aria-label="Nouvelle tâche"><button class="btn" type="submit">+</button></form>`}</div>
+  <details class="more" ${p.why?'open':''}><summary>Pourquoi, dossier, couleur</summary>
   <div class="field"><label for="f-why">Pourquoi ce projet</label><textarea class="input" id="f-why" data-field="why" ${closed?'disabled':''}>${esc(p.why)}</textarea></div>
   <div class="field"><span class="lbl">Dossier sur l'ordi</span>${p.folder?`<div class="folder"><code id="fpath">${esc(folderPath(p))}</code><button data-act="copyPath">Copier</button></div>`:`<button class="btn ghost" data-act="mkFolder">Créer un dossier pour ce projet</button>`}</div>
   ${closed?'':`<div class="field"><span class="lbl">Couleur</span><div class="swatches">${COLORS.map(c=>`<button style="--sw:${c}" data-act="color" data-c="${c}" aria-pressed="${p.color===c}" aria-label="Couleur ${c}"></button>`).join('')}</div></div>`}
@@ -1001,14 +1051,18 @@ function detail(id,msg){
 }
 
 /* Placement */
+let placeMode=null;
 function placeSheet(id,msg,startK){
   const p=P(id); sheetId=id;
   const back=ctx&&ctx.fromFill?`backWeek" data-k="${ctx.k}`:'back';
-  if(isDay(p)){
+  const mode=placeMode||(isDay(p)?'j':'s');
+  const modeSeg=`<div class="seg"><button data-act="pmode" data-m="j" aria-pressed="${mode==='j'}">Par jours</button><button data-act="pmode" data-m="s" aria-pressed="${mode==='s'}">Par semaines (lun–ven)</button></div>`;
+  if(mode==='j'){
     const k0=startK||(ctx&&ctx.k)||CUR;
     let html=''; for(let i=0;i<4;i++){const k=wkAdd(k0,i), m=wkMon(k), c=inWeek(k), has=pWeeks(p).includes(k), full=!has&&!canAdd(p,k);
       html+=`<div class="dweek"><div class="h"><b>S${wkNum(k)}</b><span>${wkRange(k)}</span>${full?'<span class="full">pleine</span>':`<span>${small(p)?c.s.length+'/'+MAXS+' petits':c.n.length+'/'+MAXN}</span>`}</div><div class="d7">${JR.map((j,di)=>{const dt=new Date(m); dt.setDate(m.getDate()+di); const s=iso(dt); const on=p.days.includes(s); return `<button data-act="toggleDay" data-d="${s}" data-k="${k}" class="${on?'on':''}${di>4?' we':''}${offOn(s)?' off':''}${p.due===s?' due':''}"${p.due===s?' title="Échéance"':''}>${p.due===s?'⏱':j}<b>${dt.getDate()}</b></button>`;}).join('')}</div></div>`;}
-    openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer sur des jours<small>${esc(p.name)} · ${SIZES[p.size].l}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer<small>${esc(p.name)} · ${durLbl(p)}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    ${modeSeg}
     ${p.due?`<div class="duebar">⏱ Échéance : <b>${fmt(p.due)} ${parse(p.due).getFullYear()}</b>${urgHtml(p)}</div>`:''}
     ${msg||''}<p class="note" style="margin:0">Touche les jours où tu y travailles. ${small(p)?'Un petit projet ne prend pas de case de la semaine.':'Il prend une des 3 cases des semaines touchées.'}</p>
     <div class="daypick" style="${pv(p)}">${html}</div>
@@ -1017,9 +1071,10 @@ function placeSheet(id,msg,startK){
     let li='', lm=-1; for(let i=0;i<53;i++){const k=wkAdd(CUR,i), c=inWeek(k), has=p.weeks.includes(k), ok=has||canAdd(p,k);
       const th=wkMon(k); th.setDate(th.getDate()+3); if(th.getMonth()!==lm){lm=th.getMonth(); li+=`<li class="wsep">${MOIS_L[lm]} ${th.getFullYear()}</li>`;}
       li+=`<li><button data-act="toggleWk" data-k="${k}" class="${has?'in':''}"><span><b>S${wkNum(k)}</b><br><span class="note" style="margin:0">${fmtD(wkMon(k))}</span></span><span class="ems">${[...c.n,...c.s].map(x=>`<i style="${pv(x)}" title="${esc(x.name)}">${x.emoji}</i>`).join('')}</span><span class="cap">${p.due&&p.due>=wkDates(k)[0]&&p.due<=wkDates(k)[1]?'<b class="wdue">⏱ '+fmt(p.due)+'</b> ':''}${has?'✓ placé':ok?c.n.length+'/'+MAXN:'pleine'}</span></button></li>`;}
-    openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer dans des semaines<small>${esc(p.name)} · ${SIZES[p.size].l}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Placer<small>${esc(p.name)} · ${durLbl(p)}</small></h2><button class="xbtn" data-act="${back}">OK</button></div><div class="sbody">
+    ${modeSeg}
     ${p.due?`<div class="duebar">⏱ Échéance : <b>${fmt(p.due)} ${parse(p.due).getFullYear()}</b>${urgHtml(p)}</div>`:''}
-    ${msg||''}<p class="note" style="margin:0">Touche une semaine pour l'ajouter ou la retirer.</p><ul class="wkpick">${li}</ul></div>`,'pw:'+id);
+    ${msg||''}<p class="note" style="margin:0">Touche une semaine pour l'ajouter ou la retirer. Elle occupe les 5 jours ouvrables sur le planning.</p><ul class="wkpick">${li}</ul></div>`,'pw:'+id);
   }
 }
 function fillWeek(k,size,msg){
@@ -1028,7 +1083,7 @@ function fillWeek(k,size,msg){
   let html='', lastQ=-1;
   list.forEach(p=>{const q=quad(p); if(q!==lastQ){lastQ=q; html+=`<span class="quad"><i style="background:${QUADS[q][1]}"></i>${QUADS[q][0]}</span>`;}
     const inPrev=pWeeks(p).includes(wkAdd(k,-1));
-    html+=`<button class="pickbtn" style="${pv(p)}" data-act="addToWk" data-id="${p.id}"><span class="sw">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}<span>${SIZES[p.size].l}</span>${p.due?`<span>⏱ ${fmt(p.due)}</span>`:''}${inPrev?'<span>suite de la sem. d\'avant</span>':''}${urgHtml(p)}</span></span></button>`;});
+    html+=`<button class="pickbtn" style="${pv(p)}" data-act="addToWk" data-id="${p.id}"><span class="sw">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}<span>${durLbl(p)}</span>${p.due?`<span>⏱ ${fmt(p.due)}</span>`:''}${inPrev?'<span>suite de la sem. d\'avant</span>':''}${urgHtml(p)}</span></span></button>`;});
   openSheet(`<div class="shead"><h2>${size==='s'?'Petit projet':'Projet'} pour la semaine ${wkNum(k)}<small>${wkRange(k)} · ${size==='s'?c.s.length+'/'+MAXS:c.n.length+'/'+MAXN}</small></h2><button class="xbtn" data-act="backWeek" data-k="${k}">Retour</button></div><div class="sbody">
   ${msg||''}
   <button class="btn" data-act="new">+ Nouveau projet</button>
@@ -1037,7 +1092,7 @@ function fillWeek(k,size,msg){
 function closeFlow(id){const p=P(id);
   openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Clôturer<small>${esc(p.name)}</small></h2><button class="xbtn" data-act="back">Retour</button></div><div class="sbody">
     <div class="field"><label for="f-learn">Ce que j'en retire</label><textarea class="input" id="f-learn" placeholder="Une ou deux phrases suffisent"></textarea></div>
-    <div class="field"><label for="f-diff">Ce que je ferais autrement</label><textarea class="input" id="f-diff" placeholder="Prévu ${SIZES[p.size].l}. Et en vrai ?"></textarea></div>
+    <div class="field"><label for="f-diff">Ce que je ferais autrement</label><textarea class="input" id="f-diff" placeholder="Prévu ${durLbl(p)}. Et en vrai ?"></textarea></div>
     ${p.folder?`<div class="folder"><code>~/Projets/${esc(p.folder)} → ~/Projets/_Archives/${todayS.slice(0,4)}/${esc(p.folder)}</code></div><p class="note" style="margin:0">Dans la vraie version, le dossier sera déplacé automatiquement.</p>`:''}
     <div class="actions"><button class="btn ghost" data-act="back">Annuler</button><button class="btn" data-act="closeDo">Clôturer et archiver</button></div></div>`);}
 function summary(){
@@ -1055,7 +1110,7 @@ function summary(){
   <pre class="sum" id="sumtxt">${esc(L.join('\n'))}</pre><button class="btn" data-act="copySum">Copier le texte</button></div>`,'recap');
 }
 function bravo(p){
-  const big=p.size==='m1';
+  const big=durOf(p)>=20;
   const wrap=document.createElement('div'); wrap.className='bravo'+(big?' big':'');
   wrap.innerHTML=`<canvas></canvas><div class="bravobox" style="${pv(p)}"><span class="emo">${p.emoji}</span><b>${big?'BRAVO !!!':'BRAVO'}</b>${big?'<i>Plus d\'un mois de travail, c\'est fait.</i>':''}<small>${esc(p.name)}</small></div>`;
   document.body.appendChild(wrap);
@@ -1084,13 +1139,15 @@ function notesSheet(pid,focusId){
   if(!p.notes||!p.notes.length) p.notes=[{id:'n'+Date.now(),t:'',l:0}];
   const N=p.notes; let html='', hide=99;
   N.forEach((x,i)=>{ if(x.l>hide) return; hide=99; const kids=i+1<N.length&&N[i+1].l>x.l; if(kids&&x.c) hide=x.l;
-    html+=`<li class="nl${x.d?' done':''}" style="--lv:${x.l}"><button class="nb${kids?' has':''}" data-act="nCol" data-n="${x.id}" aria-label="${kids?(x.c?'Déplier':'Replier'):'Puce'}">${kids?(x.c?'▸':'▾'):'•'}</button><input class="ni" data-nid="${x.id}" value="${esc(x.t)}" aria-label="Ligne de note" autocomplete="off"></li>`; });
+    html+=`<li class="nl${x.d?' done':''}" style="--lv:${x.l}"><button class="nb${kids?' has':''}" data-act="nCol" data-n="${x.id}" aria-label="${kids?(x.c?'Déplier':'Replier'):'Puce'}">${kids?(x.c?'▸':'▾'):'•'}</button><textarea class="ni" data-nid="${x.id}" rows="1" aria-label="Ligne de note">${esc(x.t)}</textarea></li>`; });
   openSheet(`<div class="shead" style="${pv(p)}"><span class="emo">${p.emoji}</span><h2>Notes<small>${esc(p.name)}</small></h2><button class="xbtn" data-act="back">OK</button></div>
   <div class="sbody"><ul class="nlist">${html}</ul>
   <p class="note" style="margin:0">Entrée : nouvelle ligne. Ligne vide + effacer : la supprime. Les boutons du bas agissent sur la ligne sélectionnée.</p></div>
   <div class="ntools"><button data-act="nOut" aria-label="Désindenter">⇤</button><button data-act="nIn" aria-label="Indenter">⇥</button><button data-act="nUp" aria-label="Monter">↑</button><button data-act="nDown" aria-label="Descendre">↓</button><button data-act="nDone" aria-label="Barrer">✓</button><button data-act="nDel" aria-label="Supprimer">×</button></div>`,'n:'+pid);
+  $sheet.querySelectorAll('textarea.ni').forEach(autoH);
   const f=focusId&&$sheet.querySelector('.ni[data-nid="'+focusId+'"]'); if(f){ lastNid=focusId; try{f.focus({preventScroll:true}); const L=f.value.length; f.setSelectionRange(L,L); f.scrollIntoView({block:'nearest'});}catch(e){} }
 }
+function autoH(t){ t.style.height='auto'; t.style.height=t.scrollHeight+'px'; }
 function nBlock(N,i){let j=i; while(j+1<N.length&&N[j+1].l>N[i].l) j++; return j;}
 function nAct(a,nid){
   const p=P(ctx&&ctx.notes); if(!p||!nid) return; const N=p.notes, i=N.findIndex(x=>x.id===nid); if(i<0) return;
@@ -1132,14 +1189,21 @@ function offsSheet(){
 function tagsSheet(confirmId){
   sheetId=null; ctx=null;
   const count=id=>S.projects.filter(p=>p.tags.includes(id)).length;
-  openSheet(`<div class="shead"><h2>Tags<small>renommer ou supprimer</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
-   ${S.tags.length?`<ul class="list">${S.tags.map(t=>`<li style="flex-wrap:wrap;padding-right:12px"><input class="input" style="flex:1;min-width:0" data-tagname="${t.id}" value="${esc(t.name)}" aria-label="Nom du tag" maxlength="20"><span class="d" style="white-space:nowrap">${count(t.id)} projet${count(t.id)>1?'s':''}</span>${confirmId===t.id?`<div class="actions" style="width:100%"><button class="btn ghost" data-act="tagDelNo">Annuler</button><button class="btn warn" data-act="tagDelOk" data-t="${t.id}">Supprimer « ${esc(t.name)} »</button></div>`:`<button class="x" data-act="tagDel" data-t="${t.id}" aria-label="Supprimer ${esc(t.name)}">×</button>`}</li>`).join('')}</ul>`:'<p class="empty">Aucun tag.</p>'}
+  openSheet(`<div class="shead"><h2>Tags<small>renommer, colorer ou supprimer</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+   ${S.tags.length?`<ul class="list">${S.tags.map(t=>`<li style="flex-wrap:wrap;padding-right:12px"><input class="input" style="flex:1;min-width:0" data-tagname="${t.id}" value="${esc(t.name)}" aria-label="Nom du tag" maxlength="20"><span class="d" style="white-space:nowrap">${count(t.id)} projet${count(t.id)>1?'s':''}</span><div class="tcolors">${['',...TAG_COLORS].map(c=>`<button class="tcol${c?'':' none'}" style="--sw:${c||'transparent'}" data-act="tagColor" data-t="${t.id}" data-c="${c}" aria-pressed="${(t.color||'')===c}" aria-label="${c?'Couleur '+c:'Sans couleur'}"></button>`).join('')}</div>${confirmId===t.id?`<div class="actions" style="width:100%"><button class="btn ghost" data-act="tagDelNo">Annuler</button><button class="btn warn" data-act="tagDelOk" data-t="${t.id}">Supprimer « ${esc(t.name)} »</button></div>`:`<button class="x" data-act="tagDel" data-t="${t.id}" aria-label="Supprimer ${esc(t.name)}">×</button>`}</li>`).join('')}</ul>`:'<p class="empty">Aucun tag.</p>'}
    <p class="note" style="margin:0">Supprimer un tag le retire des projets, sans toucher aux projets eux-mêmes.</p></div>`,'tags');
 }
 function copy(text,el){const fb=()=>{try{const r=document.createRange(); r.selectNodeContents(el); const s=getSelection(); s.removeAllRanges(); s.addRange(r); toast('Texte sélectionné, copie-le');}catch(e){}}; try{ if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(()=>toast('Copié'),fb); else fb(); }catch(e){fb();}}
+document.addEventListener('focusout',e=>{ const t=e.target; if(!t||!t.classList||!t.classList.contains('tedit')) return; const p=P(sheetId); if(!p) return; const i=Number(t.dataset.ti), v=t.value.trim(); if(!p.tasks[i]) return; if(v) p.tasks[i].t=v; else { p.tasks.splice(i,1); toast('Tâche supprimée'); } save(); setTimeout(()=>detail(sheetId),0); });
+document.addEventListener('keydown',e=>{ const t=e.target; if(t&&t.classList&&t.classList.contains('tedit')&&e.key==='Enter'){ e.preventDefault(); t.blur(); } });
+let drag=null;
+document.addEventListener('pointerdown',e=>{ const h=e.target.closest&&e.target.closest('.tasks .drag'); if(!h) return; e.preventDefault(); const li=h.closest('li'); drag={li,ul:li.parentNode,pid:li.parentNode.dataset.pid}; li.classList.add('dragging'); try{ h.setPointerCapture(e.pointerId); }catch(err){} });
+document.addEventListener('pointermove',e=>{ if(!drag) return; e.preventDefault(); const y=e.clientY; let before=null; for(const it of drag.ul.children){ if(it===drag.li) continue; const r=it.getBoundingClientRect(); if(y<r.top+r.height/2){ before=it; break; } } if(before){ if(drag.li.nextSibling!==before) drag.ul.insertBefore(drag.li,before); } else if(drag.ul.lastChild!==drag.li) drag.ul.appendChild(drag.li); },{passive:false});
+const endDrag=()=>{ if(!drag) return; const {ul,li,pid}=drag; drag=null; li.classList.remove('dragging'); const p=P(pid); if(!p) return; const order=[...ul.children].map(x=>Number(x.dataset.i)); if(order.length===p.tasks.length&&order.some((v,i)=>v!==i)){ p.tasks=order.map(i=>p.tasks[i]); save(); } detail(pid); };
+document.addEventListener('pointerup',endDrag); document.addEventListener('pointercancel',endDrag);
 let tt; function toast(m){const t=document.getElementById('toast'); t.textContent=m; t.hidden=false; clearTimeout(tt); tt=setTimeout(()=>t.hidden=true,2200);}
 function syncForm(){const a=document.getElementById('f-amount'),n=document.getElementById('f-note'),d=document.getElementById('f-date'); if(a) ui.amount=a.value; if(n) ui.note=n.value; if(d) ui.date=d.value;}
-function placeWeekly(p,k){ if(pWeeks(p).includes(k)) return true; if(!canAdd(p,k)) return false; p.weeks.push(k); p.weeks.sort(); save(); return true; }
+function placeWeekly(p,k){ if(p.weeks.includes(k)) return true; if(!canAdd(p,k)) return false; p.weeks.push(k); p.weeks.sort(); save(); return true; }
 function afterCreate(p){
   if(isMini(p)){ toast('Mini projet ajouté : '+p.name); if(ctx&&ctx.fromFill) weekSheet(ctx.k); else closeSheet(); return; }
   if(ctx&&ctx.fromFill){ const k=ctx.k;
@@ -1164,7 +1228,10 @@ document.addEventListener('click',e=>{
   else if(a==='planM'){ui.planStart=el.dataset.d||null; render();}
   else if(a==='filter'){ui.filter=el.dataset.f; render();}
   else if(a==='sort'){ui.sort=el.dataset.s; render();}
-  else if(a==='tagf'){ui.tag=ui.tag===el.dataset.t?null:el.dataset.t; render();}
+  else if(a==='tagf'){ const id=el.dataset.t; ui.tagSel=ui.tagSel.includes(id)?ui.tagSel.filter(x=>x!==id):[...ui.tagSel,id]; render(); }
+  else if(a==='colf'){ const ids=S.tags.filter(t=>t.color===el.dataset.c).map(t=>t.id), on=ids.every(id=>ui.tagSel.includes(id)); ui.tagSel=on?ui.tagSel.filter(x=>!ids.includes(x)):[...new Set([...ui.tagSel,...ids])]; render(); }
+  else if(a==='tagClear'){ ui.tagSel=[]; render(); }
+  else if(a==='tagColor'){ const t=T(el.dataset.t); if(t){ t.color=el.dataset.c||null; if(!t.color) delete t.color; save(); render(); tagsSheet(); } }
   else if(a==='rmWkS'){const p=P(id), k=ctx.k; removeFromWeek(p,k); save(); toast(p.emoji+' '+p.name+' retiré de la semaine '+wkNum(k)); weekSheet(k);}
   else if(a==='item') itemSheet(el.dataset.src,el.dataset.v);
   else if(a==='itemStep') {const inp=document.getElementById('f-item'), v=itemArr(ctx.src).find(x=>x.id===ctx.vid); if(inp&&v&&inp.value.trim()) v.t=inp.value.trim(); save(); itemSheet(ctx.src,ctx.vid,'step');}
@@ -1176,8 +1243,11 @@ document.addEventListener('click',e=>{
   else if(a==='clearDone'){S.lists.petites=S.lists.petites.filter(v=>!v.d); save(); render();}
   else if(a==='tags') tagsSheet();
   else if(a==='offs') offsSheet();
+  else if(a==='tfilt'){ ui.taskAdmin=el.dataset.v==='1'; detail(sheetId); }
+  else if(a==='tedit'){ const p=P(sheetId); if(!p||p.closed) return; const i=Number(el.dataset.i), inp=document.createElement('input'); inp.className='input tedit'; inp.value=p.tasks[i].t; inp.dataset.ti=i; inp.setAttribute('aria-label','Modifier la tâche'); el.replaceWith(inp); try{ inp.focus(); const L=inp.value.length; inp.setSelectionRange(L,L); }catch(err){} }
   else if(a==='minis') minisSheet();
   else if(a==='minisDone') minisSheet(true);
+  else if(a==='miniSave'){ const p=P(sheetId), nm=document.getElementById('f-mname'), du=document.getElementById('f-due'); if(nm&&nm.value.trim()) p.name=nm.value.trim(); if(du) p.due=du.value||null; save(); toast('Enregistré'); minisSheet(); }
   else if(a==='miniDone'){ const p=P(sheetId); p.closed=todayS; save(); minisSheet(); toast('✓ '+p.name); }
   else if(a==='itemMini'){ const v=takeItem(); if(v){ S.projects.push(newMini(v.t)); save(); toast('Mini projet ajouté'); } closeSheet(); }
   else if(a==='notes') notesSheet(sheetId);
@@ -1196,20 +1266,23 @@ document.addEventListener('click',e=>{
   else if(a==='delOk'){const p=P(sheetId); S.projects=S.projects.filter(x=>x.id!==p.id); S.entries=S.entries.filter(e=>e.pid!==p.id); save(); toast((p.emoji?p.emoji+' ':'')+p.name+' supprimé'); if(isMini(p)) minisSheet(); else closeSheet();}
   else if(a==='tagDel') tagsSheet(el.dataset.t);
   else if(a==='tagDelNo') tagsSheet();
-  else if(a==='tagDelOk'){const id=el.dataset.t, t=T(id); S.tags=S.tags.filter(x=>x.id!==id); S.projects.forEach(p=>p.tags=p.tags.filter(x=>x!==id)); if(ui.tag===id) ui.tag=null; save(); toast('Tag « '+t.name+' » supprimé'); tagsSheet();}
+  else if(a==='tagDelOk'){const id=el.dataset.t, t=T(id); S.tags=S.tags.filter(x=>x.id!==id); S.projects.forEach(p=>p.tags=p.tags.filter(x=>x!==id)); ui.tagSel=ui.tagSel.filter(x=>x!==id); save(); toast('Tag « '+t.name+' » supprimé'); tagsSheet();}
   else if(a==='fill') fillWeek(el.dataset.k||ui.wk,el.dataset.size);
   else if(a==='addToWk'){const p=P(id), k=ctx.k; if(isDay(p)){placeSheet(p.id,null,k);} else if(placeWeekly(p,k)){toast(p.emoji+' '+p.name+' · semaine '+wkNum(k)); weekSheet(k);} else fillWeek(k,ctx.size,fullMsg(p,k));}
   else if(a==='swapWk'){const o=P(el.dataset.out), p=P(el.dataset.in), k=el.dataset.k; removeFromWeek(o,k); save(); toast(o.emoji+' '+o.name+' retiré de la semaine '+wkNum(k)); if(isDay(p)) placeSheet(p.id,null,k); else { placeWeekly(p,k); if(ctx&&ctx.fromFill) weekSheet(k); else placeSheet(p.id);} }
-  else if(a==='place'){ctx=null; placeSheet(sheetId);}
+  else if(a==='place'){ctx=null; placeMode=el.dataset.m||null; placeSheet(sheetId);}
+  else if(a==='pmode'){placeMode=el.dataset.m; placeSheet(sheetId,null,ctx&&ctx.k0||undefined);}
   else if(a==='toggleWk'){const p=P(sheetId), k=el.dataset.k; if(p.weeks.includes(k)){p.weeks=p.weeks.filter(w=>w!==k); save(); placeSheet(sheetId);} else if(placeWeekly(p,k)) placeSheet(sheetId); else placeSheet(sheetId,fullMsg(p,k));}
   else if(a==='toggleDay'){const p=P(sheetId), d=el.dataset.d, k=el.dataset.k; if(p.days.includes(d)){p.days=p.days.filter(x=>x!==d); save(); placeSheet(sheetId,null,ctx&&ctx.k0||undefined);} else if(canAdd(p,k)){p.days.push(d); p.days.sort(); save(); placeSheet(sheetId,null,ctx&&ctx.k0||undefined);} else placeSheet(sheetId,fullMsg(p,k),ctx&&ctx.k0||undefined);}
   else if(a==='dayShift'){const k0=wkAdd(el.dataset.k,Number(el.dataset.d)); ctx=Object.assign(ctx||{},{k0}); placeSheet(sheetId,null,k0);}
-  else if(a==='unplace'){const p=P(sheetId), k=el.dataset.k; if(isDay(p)) p.days=p.days.filter(x=>x!==k); else p.weeks=p.weeks.filter(w=>w!==k); save(); detail(sheetId);}
+  else if(a==='unplace'){const p=P(sheetId), k=el.dataset.k; if(k.includes('-W')) p.weeks=p.weeks.filter(w=>w!==k); else p.days=p.days.filter(x=>x!==k); save(); detail(sheetId);}
   else if(a==='size'){const p=P(sheetId), s=el.dataset.s; const wasDay=isDay(p); if(isMini(p)&&s!=='mini'){ if(!p.emoji) p.emoji='✨'; if(p.color===MINI_COLOR) p.color=COLORS[Math.floor(Math.random()*COLORS.length)]; } if(s==='mini'){ p.emoji=''; p.color=MINI_COLOR; p.weeks=[]; p.days=[]; } p.size=s; if(wasDay!==isDay(p)){ if(isDay(p)) p.weeks=[]; else {p.weeks=pWeeks(Object.assign({},p,{size:'j2'})); p.days=[];} } save(); detail(sheetId);}
   else if(a==='imp'){P(sheetId).imp=Number(el.dataset.n); save(); detail(sheetId);}
   else if(a==='clearDue'){P(sheetId).due=null; save(); detail(sheetId);}
   else if(a==='tag'){const p=P(sheetId), t=el.dataset.t; p.tags=p.tags.includes(t)?p.tags.filter(x=>x!==t):[...p.tags,t]; save(); detail(sheetId);}
   else if(a==='nsize'){syncDraft(); draft.size=el.dataset.s; newSheet(true);}
+  else if(a==='ndur'){syncDraft(); const v=el.dataset.v; if(v==='mini') draft.size='mini'; else { draft.size='proj'; draft.dur=Number(v); } newSheet(true);}
+  else if(a==='dur'){const p=P(sheetId); applyDur(p,el.dataset.v); save(); detail(sheetId);}
   else if(a==='nimp'){syncDraft(); draft.imp=Number(el.dataset.n); newSheet(true);}
   else if(a==='nodue'){syncDraft(); draft.due=''; newSheet(true);}
   else if(a==='ntag'){syncDraft(); const t=el.dataset.t; draft.tags=draft.tags.includes(t)?draft.tags.filter(x=>x!==t):[...draft.tags,t]; newSheet(true);}
@@ -1219,7 +1292,7 @@ document.addEventListener('click',e=>{
   else if(a==='emojiJump'){const t=document.getElementById('ecat-'+el.dataset.i); if(t){ $sheet.scrollTop=t.offsetTop-110; }}
   else if(a==='emojiBack') emojiDone(null);
   else if(a==='create'){syncDraft(); const d=draft; if(!d.name.trim()){toast('Donne un nom au projet'); return;}
-    const p={id:'p'+Date.now(),emoji:d.emoji,color:d.color,name:d.name.trim(),size:d.size,imp:d.imp,due:d.due||null,tags:d.tags,weeks:[],days:[],why:d.why.trim(),next:'',folder:null,tasks:[]};
+    const p={id:'p'+Date.now(),emoji:d.emoji,color:d.color,name:d.name.trim(),size:d.size,dur:d.size==='mini'?null:d.dur,imp:d.imp,due:d.due||null,tags:d.tags,weeks:[],days:[],why:d.why.trim(),next:'',folder:null,tasks:[]};
     if(p.size==='mini'){ p.emoji=''; p.color=MINI_COLOR; p.tags=[]; }
     if(d.fromItem){const arr=itemArr(d.fromItem.src), i=arr.findIndex(v=>v.id===d.fromItem.vid); if(i>=0) arr.splice(i,1);} S.projects.push(p); save(); draft=null; if(d.fromItem){toast(p.emoji+' '+p.name+' créé'); closeSheet(); return;} afterCreate(p);}
   else if(a==='kind'){syncForm(); ui.kind=el.dataset.k; ui.amount=''; render();}
@@ -1240,6 +1313,7 @@ document.addEventListener('click',e=>{
 document.addEventListener('change',e=>{
   const t=e.target;
   if(t.dataset.act==='task'){const p=P(sheetId); p.tasks[Number(t.dataset.i)].d=t.checked; save(); detail(sheetId); return;}
+  if(t.dataset.durother){ const v=parseFloat(String(t.value).replace(',','.')); if(!(v>0)) return; if(t.dataset.durother==='ndur'){ syncDraft(); draft.size='proj'; draft.dur=v; newSheet(true); } else { const p=P(sheetId); applyDur(p,v); save(); detail(sheetId); } return; }
   if(t.dataset.act==='miniChk'){ const p=P(t.dataset.id); if(p){ p.closed=todayS; save(); setTimeout(()=>{ minisSheet(); toast('✓ '+p.name); },250); } return; }
   if(t.dataset.act==='petiteDone'){const v=S.lists.petites.find(x=>x.id===t.dataset.v); if(v){v.d=t.checked; save(); render();} return;}
   if(t.id==='f-item'&&ctx&&ctx.vid){const v=itemArr(ctx.src).find(x=>x.id===ctx.vid); if(v&&t.value.trim()){v.t=t.value.trim(); save();} }
@@ -1249,7 +1323,7 @@ document.addEventListener('change',e=>{
   if(t.dataset.tagname){const tg=T(t.dataset.tagname), v=t.value.trim(); if(tg&&v){tg.name=v; save(); toast('Tag renommé');}}
 });
 document.addEventListener('input',e=>{const t=e.target;
-  if(t.classList&&t.classList.contains('ni')){const p=P(ctx&&ctx.notes), x=p&&p.notes.find(y=>y.id===t.dataset.nid); if(x){x.t=t.value; save();} return;}
+  if(t.classList&&t.classList.contains('ni')){ if(t.value.includes('\n')) t.value=t.value.replace(/\n+/g,' '); autoH(t); const p=P(ctx&&ctx.notes), x=p&&p.notes.find(y=>y.id===t.dataset.nid); if(x){x.t=t.value; save();} return;}
   if(t.id==='f-amount') ui.amount=t.value; if(t.id==='f-note') ui.note=t.value;
   if(t.id==='n-name'&&draft){draft.name=t.value; if(!draft.picked){let s='✨'; for(const [re,em] of SUGG){ if(re.test(t.value)){s=em; break;} } draft.emoji=s; const b=document.getElementById('nemo'); if(b) b.textContent=s;}}
 });
@@ -1284,7 +1358,7 @@ function fkey(el){ if(!el||el===document.body||el===document.documentElement) re
   if(el.id) return '#'+q(el.id);
   if(el.classList&&el.classList.contains('tab')) return '.tab[data-view="'+q(el.dataset.view)+'"]';
   const a=el.dataset&&el.dataset.act; if(!a) return null; let s='[data-act="'+q(a)+'"]';
-  ['id','n','s','t','k','d','c','v','e','i','f','size','out','in','src','to'].forEach(k=>{ if(el.dataset[k]!=null) s+='[data-'+k+'="'+q(el.dataset[k])+'"]'; });
+  ['id','n','s','t','k','d','c','v','e','i','f','m','size','out','in','src','to'].forEach(k=>{ if(el.dataset[k]!=null) s+='[data-'+k+'="'+q(el.dataset[k])+'"]'; });
   return s; }
 const visible=el=>el.getClientRects().length>0;
 function focusables(){ const root=!$scrim.hidden?$sheet:document; return [...root.querySelectorAll('button:not([disabled]),input:not([disabled]):not([type=hidden]),textarea:not([disabled]),select,summary')].filter(el=>visible(el)&&(!$scrim.hidden||!$scrim.contains(el))); }
@@ -1300,7 +1374,7 @@ openSheet=function(html,skey){ const wasOpen=!$scrim.hidden; const key=kbdOn()?f
 document.addEventListener('keydown',e=>{
   const k=e.key||'', t=e.target||{}, tag=t.tagName, typing=(tag==='INPUT'&&!['checkbox','radio','button','submit'].includes(t.type))||tag==='TEXTAREA'||tag==='SELECT';
   if(!typing&&!kbdOn()&&/^([0-9*#]|Arrow)/.test(k)){ document.body.classList.add('kbd'); addBadges(); }
-  if(typing){ if(k==='ArrowUp'||k==='ArrowDown'){ e.preventDefault(); move(k==='ArrowDown'?1:-1); } else if(k==='Escape'){ t.blur(); } return; }
+  if(typing){ if((k==='ArrowUp'||k==='ArrowDown')&&!(tag==='TEXTAREA'&&((k==='ArrowUp'&&t.selectionStart>0)||(k==='ArrowDown'&&t.selectionEnd<t.value.length)))){ e.preventDefault(); move(k==='ArrowDown'?1:-1); } else if(k==='Escape'){ t.blur(); } return; }
   if(k.startsWith('Arrow')){ e.preventDefault(); move(k==='ArrowDown'||k==='ArrowRight'?1:-1); return; }
   if(k==='Enter'){ if(t.type==='checkbox'){ e.preventDefault(); t.click(); } return; }
   const sheetOpen=!$scrim.hidden;
@@ -1331,7 +1405,7 @@ function rowsOf(st){ const r={};
   return r; }
 function fromRows(map){ const st=emptyS(), num=id=>Number(String(id).replace(/\D/g,''))||0;
   Object.keys(map).forEach(k=>{ let d; try{ d=JSON.parse(map[k]); }catch(e){ return; } if(!d) return; const t=k[0];
-    if(t==='p'){ ['weeks','days','tags','tasks'].forEach(f=>{ if(!Array.isArray(d[f])) d[f]=[]; }); st.projects.push(d); }
+    if(t==='p'){ ['weeks','days','tags','tasks'].forEach(f=>{ if(!Array.isArray(d[f])) d[f]=[]; }); const OLD={h4:1,j2:2,w1:5,m1:20}; if(OLD[d.size]!=null){ if(d.dur==null) d.dur=OLD[d.size]; d.size='proj'; } if(!d.size) d.size='proj'; st.projects.push(d); }
     else if(t==='t') st.tags.push(d); else if(t==='o') st.offs.push(d); else if(k==='m:order') st.order=d;
     else if(t==='v'){ const L=d.list||'inbox', it=Object.assign({},d); delete it.list; (L==='inbox'?st.inbox:(st.lists[L]||(st.lists[L]=[]))).push(it); } });
   st.projects.sort((a,b)=>num(a.id)-num(b.id)); st.tags.sort((a,b)=>(a.o||0)-(b.o||0)); st.inbox.sort((a,b)=>num(a.id)-num(b.id));
