@@ -310,6 +310,12 @@ textarea.ni{resize:none;overflow:hidden;line-height:1.35;font-family:inherit;dis
 .tasks li.next{background:#FFF6D6;box-shadow:inset 4px 0 0 var(--star)}
 .tasks li.next .tt{font-weight:700}
 @media (min-width:900px){.wrap,.top .in,.tabs .in{max-width:80vw}.sheet{max-width:min(80vw,960px)}}
+.gwrap{display:flex;width:max-content}
+.gmore{flex:none;width:58px;border:0;border-left:2px solid var(--ink);background:var(--head);font-size:1.6rem;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+.gmore small{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.bgc[data-act="cell"]{cursor:pointer}
+.bgc[data-act="cell"]:hover{background:var(--hl)}
+.grow.blank .gg{grid-template-rows:44px}
 .danger{border:2px solid var(--neg);background:var(--cell);padding:12px;display:flex;flex-direction:column;gap:10px;font-size:.92rem}
 
 /* Cases de la semaine */
@@ -818,7 +824,7 @@ function vSemaine(){
 function vPlanning(){
   const tgt=ui.planStart||todayS, tD=parse(tgt), m0=monday(tD), k0=wkKey(m0);
   let lastP=tgt; open().forEach(p=>{ p.weeks.forEach(k=>{const e=wkDates(k)[1]; if(e>lastP) lastP=e;}); p.days.forEach(d=>{ if(d>lastP) lastP=d; }); });
-  const W=Math.max(10,Math.ceil((parse(lastP)-m0)/864e5/7)+2), N=W*7;
+  const W=Math.max(10,Math.ceil((parse(lastP)-m0)/864e5/7)+2)+(ui.planExtra||0), N=W*7;
   const pm=new Date(tD.getFullYear(),tD.getMonth()-1,1), nm=new Date(tD.getFullYear(),tD.getMonth()+1,1);
   const mlab=d=>MOIS_L[d.getMonth()]+(d.getFullYear()!==today.getFullYear()?' '+d.getFullYear():'');
   const dayS=[]; for(let i=0;i<N;i++){const d=new Date(m0); d.setDate(m0.getDate()+i); dayS.push(iso(d));}
@@ -829,7 +835,7 @@ function vPlanning(){
   mo+=`<div class="mo" style="grid-column:${startI+1} / span ${span}">${MOIS_L[Number(curM.slice(5))-1]} ${curM.slice(0,4)}</div>`;
   let wk=''; for(let w=0;w<W;w++){const k=wkAdd(k0,w), c=inWeek(k), full=c.n.length>=MAXN; wk+=`<button class="wk${k===CUR?' cur':''}" style="grid-column:${w*7+1} / span 7" data-act="goWk" data-k="${k}"><b>S${wkNum(k)}</b><span class="${full?'full':''}">${c.n.length}/${MAXN}${c.s.length?' +'+c.s.length+'p':''}</span></button>`;}
   const dn=dayS.map((s,i)=>{const d=parse(s), we=d.getDay()===0||d.getDay()===6, off=offOn(s); return `<div class="dn${we?' we':''}${off?' off':''}${s===todayS?' tod':''}" style="grid-column:${i+1}"${off?` title="${esc(offLbl(s))}"`:''}>${d.getDate()}</div>`;}).join('');
-  const bg=dayS.map((s,i)=>{const d=parse(s), we=d.getDay()===0||d.getDay()===6; return `<div class="bgc${i%7===0?' mon':''}${we?' we':''}${offOn(s)?' off':''}${s===todayS?' tod':''}" style="grid-column:${i+1}"></div>`;}).join('');
+  const bg=dayS.map((s,i)=>{const d=parse(s), we=d.getDay()===0||d.getDay()===6; return `<div class="bgc${i%7===0?' mon':''}${we?' we':''}${offOn(s)?' off':''}${s===todayS?' tod':''}" style="grid-column:${i+1}" data-act="cell" data-d="${s}"></div>`;}).join('');
   /* lignes : chaque projet garde une seule ligne, rangé le plus haut possible ; un autre projet peut se glisser dans ses trous */
   const items=open().map(p=>{
     const cov=new Set();
@@ -859,16 +865,17 @@ function vPlanning(){
   const cw=inWeek(CUR), cwl=[...weekOrder(CUR,cw.n),...cw.s];
   $view.innerHTML=`<div class="wkline"><button class="wklab" data-act="goWk" data-k="${CUR}"><b>S${wkNum(CUR)}</b><span>${cw.n.length}/${MAXN}</span></button><div class="wkchips">${cwl.map(p=>`<button class="mini${small(p)?' sm':''}" style="${pv(p)}" data-act="open" data-id="${p.id}">${p.emoji} ${esc(p.name)}</button>`).join('')||'<span class="note" style="margin:0">Rien cette semaine.</span>'}</div></div>
   <div class="gnav"><button data-act="planM" data-d="${iso(pm)}">‹ ${mlab(pm)}</button><button class="mid" data-act="planM" data-d="">Aujourd'hui</button><button data-act="planM" data-d="${iso(nm)}">${mlab(nm)} ›</button></div>
-  <div class="gantt" id="gantt"><div class="gin" style="--n:${N}">
+  <div class="gantt" id="gantt"><div class="gwrap"><div class="gin" style="--n:${N}">
    <div class="grow hm"><div class="gl"></div><div class="gg">${mo}</div></div>
    <div class="grow hw"><div class="gl" style="font-size:.7rem;font-family:var(--mono)">sem.</div><div class="gg">${wk}</div></div>
    <div class="grow hd"><div class="gl"></div><div class="gg">${dn}</div></div>
-   ${rowHtml||`<div class="grow"><div class="gl"></div><div class="empty">Aucun projet placé sur cette période.</div></div>`}
-  </div></div>
+   ${rowHtml}
+   <div class="grow proj blank"><div class="gl"></div><div class="gg">${bg}</div></div>
+  </div><button class="gmore" data-act="planMore3" aria-label="Afficher 3 mois de plus">+<small>3 mois</small></button></div></div>
   <div class="planlegend"><span><b style="background:#EE9DC0"></b>vacances et congés</span><span><b style="background:#E2DFD5"></b>week-end</span><span>2/3 = cases prises dans la semaine</span></div>
-  <p class="note">Touche une semaine en haut pour voir et remplir ses 3 cases, une barre pour ouvrir le projet. Glisse sur le côté pour avancer dans le temps.</p>
+  <p class="note">Touche une case vide pour y placer un projet, une semaine en haut pour voir ses 3 cases, une barre pour ouvrir le projet.</p>
   <button class="btn ghost" data-act="offs">🏖️ Vacances et congés prévus${S.offs.length?' ('+S.offs.length+')':''}</button>`;
-  const g=document.getElementById('gantt'), ti=idx(tgt); if(g&&ti>=0){ try{ g.scrollLeft=ti*28; }catch(e){} }
+  const g=document.getElementById('gantt'), ti=idx(tgt); if(g){ try{ if(ui.planScroll!=null){ g.scrollLeft=ui.planScroll; ui.planScroll=null; } else if(ti>=0) g.scrollLeft=ti*28; }catch(e){} }
 }
 
 /* Vue projets */
@@ -936,6 +943,18 @@ function itemSheet(src,vid,mode){
 function takeItem(){const arr=itemArr(ctx.src), i=arr.findIndex(x=>x.id===ctx.vid); if(i<0) return null; const v=arr[i]; const inp=document.getElementById('f-item'); if(inp&&inp.value.trim()) v.t=inp.value.trim(); arr.splice(i,1); return v;}
 
 /* Semaine (ouverte depuis le planning) */
+function cellSheet(dS,msg){
+  const k=wkKey(parse(dS)), mode=ui.cellMode||'j'; sheetId=null; ctx={cell:dS,k,fromCell:true};
+  const list=open().filter(p=>!isMini(p)).sort(prioSort);
+  openSheet(`<div class="shead"><h2>Ajouter au planning<small>${dayLbl(dS)} ${MOIS_L[parse(dS).getMonth()]} · S${wkNum(k)}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+  <div class="seg"><button data-act="cmode" data-m="j" aria-pressed="${mode==='j'}">Ce jour</button><button data-act="cmode" data-m="s" aria-pressed="${mode==='s'}">La semaine (lun–ven)</button></div>
+  ${msg||''}
+  <button class="btn" data-act="new">+ Nouveau projet</button>
+  <div class="picklist">${list.map(p=>{ const on=mode==='j'?p.days.includes(dS):p.weeks.includes(k); return `<button class="pickbtn" style="${pv(p)}" data-act="cellAdd" data-id="${p.id}"><span class="sw">${p.emoji}</span><span class="tx"><b>${esc(p.name)}</b><span class="meta">${starsHtml(p.imp)}<span>${durLbl(p)}</span><span>${STATE[state(p)]}</span>${on?'<span>✓ déjà là · toucher pour retirer</span>':''}${urgHtml(p)}</span></span></button>`; }).join('')||'<p class="empty">Aucun projet ouvert.</p>'}</div></div>`,'cell:'+dS+mode);
+}
+function cellPlace(p,dS,k){ const mode=ui.cellMode||'j';
+  if(mode==='j'){ if(p.days.includes(dS)){ p.days=p.days.filter(x=>x!==dS); return 'retiré'; } if(!canAdd(p,k)) return false; p.days.push(dS); p.days.sort(); return 'ajouté'; }
+  if(p.weeks.includes(k)){ p.weeks=p.weeks.filter(w=>w!==k); return 'retiré'; } return placeWeekly(p,k)?'ajouté':false; }
 function weekSheet(k,msg){
   sheetId=null; ctx={k,week:true};
   const c=inWeek(k), ord=weekOrder(k,c.n), [a,b]=wkDates(k);
@@ -1022,7 +1041,7 @@ function newSheet(keep){
   if(!keep||!draft) draft={name:'',emoji:'✨',picked:false,color:COLORS[Math.floor(Math.random()*COLORS.length)],size:'proj',dur:5,imp:2,due:'',tags:[],why:''};
   if(ctx&&ctx.size==='s'&&!keep) draft.dur=1;
   const d=draft;
-  openSheet(`<div class="shead"><h2>Nouveau projet<small>${ctx?'pour la semaine '+wkNum(ctx.k):'il ira dans « À planifier »'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
+  openSheet(`<div class="shead"><h2>Nouveau projet<small>${ctx&&ctx.fromCell?((ui.cellMode||'j')==='j'?'pour le '+fmt(ctx.cell):'pour la semaine '+wkNum(ctx.k)):ctx&&ctx.k?'pour la semaine '+wkNum(ctx.k):'il ira dans « À planifier »'}</small></h2><button class="xbtn" data-act="close">Fermer</button></div><div class="sbody">
    <div class="namerow" style="--pc:${d.color}">${d.size==='mini'?'':`<button class="emobtn" data-act="emojiPick" data-for="new" aria-label="Choisir un émoji" id="nemo">${d.emoji}</button>`}<input class="input" id="n-name" placeholder="Ex. Monter le tunnel de semis" value="${esc(d.name)}" aria-label="Nom du projet"></div>
    <div class="field"><span class="lbl">Durée en jours de travail</span>${durPick(d.size==='mini',d.dur,'ndur')}</div>
    <div class="field"><span class="lbl">Importance</span>${starPick(d.imp,'nimp')}</div>
@@ -1236,6 +1255,7 @@ let tt; function toast(m){const t=document.getElementById('toast'); t.textConten
 function syncForm(){const a=document.getElementById('f-amount'),n=document.getElementById('f-note'),d=document.getElementById('f-date'); if(a) ui.amount=a.value; if(n) ui.note=n.value; if(d) ui.date=d.value;}
 function placeWeekly(p,k){ if(p.weeks.includes(k)) return true; if(!canAdd(p,k)) return false; p.weeks.push(k); p.weeks.sort(); save(); return true; }
 function afterCreate(p){
+  if(ctx&&ctx.fromCell&&!isMini(p)){ const r=cellPlace(p,ctx.cell,ctx.k); save(); toast(p.emoji+' '+p.name+(r?' · placé':' · semaine pleine, à planifier')); closeSheet(); return; }
   if(isMini(p)){ toast('Mini projet ajouté : '+p.name); if(ctx&&ctx.fromFill) weekSheet(ctx.k); else closeSheet(); return; }
   if(ctx&&ctx.fromFill){ const k=ctx.k;
     if(isDay(p)){ placeSheet(p.id,null,k); return; }
@@ -1252,7 +1272,7 @@ document.addEventListener('click',e=>{
   if(a==='open') detail(id);
   else if(a==='close') closeSheet();
   else if(a==='summary') summary();
-  else if(a==='new'){ if(!ctx||!ctx.fromFill) ctx=null; newSheet(false); }
+  else if(a==='new'){ if(!ctx||!(ctx.fromFill||ctx.fromCell)) ctx=null; newSheet(false); }
   else if(a==='reset'){S=seed(); save(); ui.wk=CUR; render(); toast('Exemples remis');}
   else if(a==='wk'){ui.wk=wkAdd(ui.wk,Number(el.dataset.d)); render();}
   else if(a==='goWk'||a==='wkS'||a==='backWeek') weekSheet(el.dataset.k);
@@ -1274,6 +1294,10 @@ document.addEventListener('click',e=>{
   else if(a==='clearDone'){S.lists.petites=S.lists.petites.filter(v=>!v.d); save(); render();}
   else if(a==='tags') tagsSheet();
   else if(a==='offs') offsSheet();
+  else if(a==='cell'){ const g=document.getElementById('gantt'); ui.planScroll=g?g.scrollLeft:null; cellSheet(el.dataset.d); }
+  else if(a==='cmode'){ ui.cellMode=el.dataset.m; cellSheet(ctx.cell); }
+  else if(a==='cellAdd'){ const p=P(id), dS=ctx.cell, k=ctx.k, r=cellPlace(p,dS,k); if(!r){ cellSheet(dS,`<div class="alert"><div>La semaine ${wkNum(k)} a déjà ${small(p)?MAXS+' petits projets':MAXN+' projets'}.</div><button class="btn ghost" data-act="goWk" data-k="${k}">Voir la semaine ${wkNum(k)}</button></div>`); return; } save(); toast(p.emoji+' '+p.name+' '+r); closeSheet(); }
+  else if(a==='planMore3'){ const g=document.getElementById('gantt'); ui.planScroll=g?g.scrollLeft:null; ui.planExtra=(ui.planExtra||0)+13; render(); }
   else if(a==='tfilt'){ ui.taskAdmin=el.dataset.v==='1'; detail(sheetId); }
   else if(a==='tedit'){ const p=P(sheetId); if(!p||p.closed) return; const i=Number(el.dataset.i), inp=document.createElement('input'); inp.className='input tedit'; inp.value=p.tasks[i].t; inp.dataset.ti=i; inp.setAttribute('aria-label','Modifier la tâche'); el.replaceWith(inp); try{ inp.focus(); const L=inp.value.length; inp.setSelectionRange(L,L); }catch(err){} }
   else if(a==='minis') minisSheet();
